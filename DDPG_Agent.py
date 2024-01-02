@@ -8,38 +8,75 @@ import gymnasium as gym
 
 import keyboard as kb
 
-env = gym.make('BipedalWalker-v3', max_episode_steps=1000)
+env = gym.make('BipedalWalker-v3', max_episode_steps=1600)
 
+# class Actor(nn.Module):
+#     def __init__(self, state_size, action_size):
+#         super(Actor, self).__init__()
+#         self.fc1 = nn.Linear(state_size, 64)
+#         self.fc2 = nn.ReLU()
+#         self.fc3 = nn.Linear(64, action_size)
+#         self.tanh = nn.Tanh()
+
+#     def forward(self, state):
+#         x = torch.relu(self.fc1(state))
+#         x = torch.relu(self.fc2(x))
+#         x = self.tanh(self.fc3(x))
+#         return x
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
-        self.fc1 = nn.Linear(state_size, 64)
+        self.fc1 = nn.Linear(state_size, 128)
         self.fc2 = nn.ReLU()
-        self.fc3 = nn.Linear(64, action_size)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.ReLU()
+        self.fc5 = nn.Linear(64, action_size)
         self.tanh = nn.Tanh()
 
     def forward(self, state):
         x = torch.relu(self.fc1(state))
         x = torch.relu(self.fc2(x))
-        x = self.tanh(self.fc3(x))
+        x = torch.relu(self.fc3(x))
+        x = torch.relu(self.fc4(x))
+        x = self.tanh(self.fc5(x))
         return x
 
+# FILEPATH: /d:/University/Thesis/Generalist Controllers/Getting somewhere/DDPG_Agent.py
 class Critic(nn.Module):
     def __init__(self, state_size, action_size):
         super(Critic, self).__init__()
-        self.fc1 = nn.Linear(state_size + action_size, 64)
+        self.fc1 = nn.Linear(state_size + action_size, 128)
         self.fc2 = nn.ReLU()
-        self.fc3 = nn.Linear(64, 4)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.ReLU()
+        self.fc5 = nn.Linear(64, 1)
 
     def forward(self, state, action):
         x = torch.relu(self.fc1(torch.cat([state, action], 1)))
         x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = torch.relu(self.fc3(x))
+        x = torch.relu(self.fc4(x))
+        x = self.fc5(x)
         return x
+
+# class Critic(nn.Module):
+#     def __init__(self, state_size, action_size):
+#         super(Critic, self).__init__()
+#         self.fc1 = nn.Linear(state_size + action_size, 64)
+#         self.fc2 = nn.ReLU()
+#         self.fc3 = nn.Linear(64, 4)
+
+#     def forward(self, state, action):
+#         x = torch.relu(self.fc1(torch.cat([state, action], 1)))
+#         x = torch.relu(self.fc2(x))
+#         x = self.fc3(x)
+#         return x
 
 # Define the DDPG Agent class
 class DDPGAgent:
     def __init__(self, state_size, action_size, load_path=None):
+
+        # Using GPU will speed up the training process. So I hope it works.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if torch.cuda.is_available():
             print("Using GPU")
@@ -54,6 +91,7 @@ class DDPGAgent:
 
         self.trained = False
 
+        # When reusing the model, the model can be loaded here.
         if load_path is not None:
             self.load_agent(load_path)
 
@@ -80,6 +118,7 @@ class DDPGAgent:
 
     def train(self, states, actions, rewards, next_states, dones, gamma=0.99):
         
+        # Prints a message when the agent starts training
         if not self.trained: 
             print("Agent is training")
             self.trained=True 
@@ -117,12 +156,26 @@ state_size = env.observation_space.shape[0]
 action_size = env.action_space.shape[0]
 agent = DDPGAgent(state_size, action_size, load_path=None)
 
+def save_agent(model_name):
+    torch.save({
+        'actor_state_dict': agent.actor.state_dict(),
+        'critic_state_dict': agent.critic.state_dict(),
+        'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
+        'critic_optimizer_state_dict': agent.critic_optimizer.state_dict()}, 
+            f'Saved models/{model_name}.pth')
+    print("Model saved")
+    
 if __name__ == "__main__":
     print("This is a module, not a script. Please import this module to use it.")
+
+    # Set the model name so it can be saved
+    model_name = "ddpg_agent_test.pth"
+
+
     # Training the agent
-    episodes = 20
-    for epoch in range(episodes):
-        state, info = env.reset()
+    episodes = 1000
+    for epoch in range(episodes + 1):
+        state, _ = env.reset()
         total_reward = 0
 
         while True:
@@ -134,21 +187,20 @@ if __name__ == "__main__":
             state = next_state
             total_reward += reward
 
-            if done:
-                print("Episode: {}, Total Reward: {}".format(epoch + 1, total_reward))
+            if done or truncated:
+                # Only print every n-th episode. Depends on the number of episodes
+                if (epoch+1) % 1 == 0:
+                    print(f"Episode: {epoch + 1}, Total Reward: {total_reward}")
                 break
-
-            if truncated:
-                print("Episode: {}, Total Reward: {}".format(epoch + 1, total_reward))
-                break
+            
+            # In case the training shows no progress, the training can be stopped manually
+            if kb.is_pressed("q"):
+                env.close()
+                save_agent(model_name)
+                # print("Training manually stopped - Model saved")
+                exit()
 
     env.close()
 
     # Save the trained DDPG agent
-    torch.save({
-        'actor_state_dict': agent.actor.state_dict(),
-        'critic_state_dict': agent.critic.state_dict(),
-        'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
-        'critic_optimizer_state_dict': agent.critic_optimizer.state_dict()}, 
-            'Getting somewhere/ddpg_agent.pth')
-
+    save_agent(model_name)
