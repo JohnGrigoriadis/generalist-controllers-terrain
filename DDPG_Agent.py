@@ -10,6 +10,7 @@ import keyboard as kb
 
 env = gym.make('BipedalWalker-v3', max_episode_steps=1600)
 
+# Simpler Neural Networks. Simpler NN will make the code faster but probably less effective
 # class Actor(nn.Module):
 #     def __init__(self, state_size, action_size):
 #         super(Actor, self).__init__()
