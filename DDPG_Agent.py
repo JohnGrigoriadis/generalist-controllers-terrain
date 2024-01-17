@@ -8,13 +8,13 @@ import gymnasium as gym
 
 import keyboard as kb
 
-env = gym.make('BipedalWalker-v3', max_episode_steps=1600)
+env = gym.make('BipedalWalker-v3', max_episode_steps=1600) #.unwrapped
 
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
-        self.layer1 = nn.Linear(state_size, 128)  
-        self.layer2 = nn.Linear(128, action_size)  
+        self.layer1 = nn.Linear(state_size, 64)  
+        self.layer2 = nn.Linear(64, action_size)  
         self.tanh = nn.Tanh()
 
     def forward(self, state):
@@ -22,17 +22,19 @@ class Actor(nn.Module):
         x = self.tanh(self.layer2(x))
         return x
 
-
 class Critic(nn.Module):
     def __init__(self, state_size, action_size):
         super(Critic, self).__init__()
-        self.layer1 = nn.Linear(state_size, 128)  
-        self.layer2 = nn.Linear(128, action_size)  
+        # Concatenate the state and action dimensions before passing through the network
+        self.layer1 = nn.Linear(state_size + action_size, 64)
+        self.layer2 = nn.Linear(64, 4)  # Output a single value
         self.tanh = nn.Tanh()
 
     def forward(self, state, action):
-        x = self.tanh(self.layer1(state))
-        x = self.tanh(self.layer2(x))
+        # Concatenate state and action along the last dimension
+        x = torch.cat([state, action], dim=-1)
+        x = self.tanh(self.layer1(x))
+        x = self.layer2(x)  # Output layer without activation
         return x
 
 # Define the DDPG Agent class
@@ -49,10 +51,10 @@ class DDPGAgent:
         self.target_actor = Actor(state_size, action_size).to(self.device)
         self.target_critic = Critic(state_size, action_size).to(self.device)
 
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=0.001)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=0.002)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=0.0001)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=0.0002)
 
-        self.update_target_models(tau=0.001)
+        self.update_target_models(tau=0.01)
 
         self.trained = False
         self.action_size = action_size
@@ -61,7 +63,6 @@ class DDPGAgent:
         # When reusing the model, the model can be loaded here.
         if load_path is not None:
             self.load_agent(load_path)
-
 
 
     def load_agent(self, load_path):
@@ -81,18 +82,18 @@ class DDPGAgent:
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
             # target_param.data.copy_(tau * param.data + tau * target_param.data)
 
-    def get_action(self, state):
-        state = torch.FloatTensor(state).to(self.device)
-        with torch.no_grad():
-            action = self.actor(state).cpu().numpy()
-        return action
-
-    # def get_action(self, state, noise_std=0.1):
+    # def get_action(self, state):
     #     state = torch.FloatTensor(state).to(self.device)
     #     with torch.no_grad():
     #         action = self.actor(state).cpu().numpy()
-    #         action += noise_std * np.random.randn(self.action_size)
     #     return action
+
+    def get_action(self, state, noise_std=0.2):
+        state = torch.FloatTensor(state).to(self.device)
+        with torch.no_grad():
+            action = self.actor(state).cpu().numpy()
+            action += noise_std * np.random.randn(self.action_size)
+        return action
 
     def train(self, states, actions, rewards, next_states, dones, gamma=0.99):
         
@@ -178,6 +179,12 @@ if __name__ == "__main__":
             total_reward += reward
 
             if done or truncated:
+                
+                # Normalize the states. Hope it helps.
+                state_mean = np.mean(states, axis=0)
+                state_std = np.std(states, axis=0)
+                states = (states - state_mean) / (state_std + 1e-8)
+
                 # Train the agent at the end of the episode
                 agent.train(states, actions, rewards, next_states, dones)
 
@@ -197,4 +204,8 @@ if __name__ == "__main__":
 
     # Save the trained DDPG agent
     save_agent(model_name)
+
+    # agent.save_target_values
+
+    # print(actions)
     
