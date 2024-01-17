@@ -13,27 +13,26 @@ env = gym.make('BipedalWalker-v3', max_episode_steps=1600)
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, action_size)
-        self.relu = nn.ReLU()
+        self.layer1 = nn.Linear(state_size, 128)  
+        self.layer2 = nn.Linear(128, action_size)  
+        self.tanh = nn.Tanh()
 
     def forward(self, state):
-        x = self.relu(self.fc1(state))
-        x = self.fc2(x)
+        x = self.tanh(self.layer1(state))
+        x = self.tanh(self.layer2(x))
         return x
 
 
 class Critic(nn.Module):
     def __init__(self, state_size, action_size):
         super(Critic, self).__init__()
-        self.fc1 = nn.Linear(state_size + action_size, 64)
-        self.fc2 = nn.ReLU()
-        self.fc3 = nn.Linear(64, 1)
+        self.layer1 = nn.Linear(state_size, 128)  
+        self.layer2 = nn.Linear(128, action_size)  
+        self.tanh = nn.Tanh()
 
     def forward(self, state, action):
-        x = torch.relu(self.fc1(torch.cat([state, action], 1)))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.tanh(self.layer1(state))
+        x = self.tanh(self.layer2(x))
         return x
 
 # Define the DDPG Agent class
@@ -50,17 +49,20 @@ class DDPGAgent:
         self.target_actor = Actor(state_size, action_size).to(self.device)
         self.target_critic = Critic(state_size, action_size).to(self.device)
 
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=0.0001)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=0.0002)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=0.001)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=0.002)
 
-        self.update_target_models(tau=0.01)
+        self.update_target_models(tau=0.001)
 
         self.trained = False
         self.action_size = action_size
+        self.save_target_values = []
 
         # When reusing the model, the model can be loaded here.
         if load_path is not None:
             self.load_agent(load_path)
+
+
 
     def load_agent(self, load_path):
         checkpoint = torch.load(load_path)
@@ -73,9 +75,11 @@ class DDPGAgent:
     def update_target_models(self, tau):
         for target_param, param in zip(self.target_actor.parameters(), self.actor.parameters()):
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
+            # target_param.data.copy_(tau * param.data + tau * target_param.data)
 
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(tau * param.data + (1.0 - tau) * target_param.data)
+            # target_param.data.copy_(tau * param.data + tau * target_param.data)
 
     def get_action(self, state):
         state = torch.FloatTensor(state).to(self.device)
@@ -83,13 +87,6 @@ class DDPGAgent:
             action = self.actor(state).cpu().numpy()
         return action
 
-    # def get_action(self, state, noise_std=0.7):
-    #     state = torch.FloatTensor(state).to(self.device)
-    #     with torch.no_grad():
-    #         action = self.actor(state).cpu().numpy()
-    #         action += noise_std * np.random.randn(self.action_size)
-    #     return action
-    
     # def get_action(self, state, noise_std=0.1):
     #     state = torch.FloatTensor(state).to(self.device)
     #     with torch.no_grad():
@@ -119,6 +116,7 @@ class DDPGAgent:
         target_actions = self.target_actor(next_states)
         target_q_values = self.target_critic(next_states, target_actions)
         target_values = rewards + (1 - dones) * gamma * target_q_values
+        self.save_target_values.append(target_values)
 
         self.actor_optimizer.zero_grad()
         actor_loss = -self.critic(states, self.actor(states)).mean()
@@ -130,7 +128,7 @@ class DDPGAgent:
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.update_target_models(tau=0.01)
+        self.update_target_models(tau=0.001)
 
 
 # Create the DDPG agent
@@ -156,7 +154,7 @@ if __name__ == "__main__":
     # action_list = []
 
     # Training the agent
-    episodes = 100
+    episodes = 1000
     for epoch in range(episodes + 1):
         state, _ = env.reset()
         total_reward = 0
@@ -199,6 +197,4 @@ if __name__ == "__main__":
 
     # Save the trained DDPG agent
     save_agent(model_name)
-
-    # print(actions)
     
