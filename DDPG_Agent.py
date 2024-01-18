@@ -8,7 +8,7 @@ import gymnasium as gym
 
 import keyboard as kb
 
-env = gym.make('BipedalWalker-v3', max_episode_steps=1600) #.unwrapped
+env = gym.make('BipedalWalker-v3', max_episode_steps=1600)
 
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
