@@ -13,8 +13,8 @@ env = gym.make('BipedalWalker-v3', max_episode_steps=1600) #.unwrapped
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
-        self.layer1 = nn.Linear(state_size, 64)  
-        self.layer2 = nn.Linear(64, action_size)  
+        self.layer1 = nn.Linear(state_size, 32)  
+        self.layer2 = nn.Linear(32, action_size)  
         self.tanh = nn.Tanh()
 
     def forward(self, state):
@@ -26,8 +26,8 @@ class Critic(nn.Module):
     def __init__(self, state_size, action_size):
         super(Critic, self).__init__()
         # Concatenate the state and action dimensions before passing through the network
-        self.layer1 = nn.Linear(state_size + action_size, 64)
-        self.layer2 = nn.Linear(64, 4)  # Output a single value
+        self.layer1 = nn.Linear(state_size + action_size, 32)
+        self.layer2 = nn.Linear(32, 4)  # Output a single value
         self.tanh = nn.Tanh()
 
     def forward(self, state, action):
@@ -143,8 +143,8 @@ def save_agent(model_name):
         'critic_state_dict': agent.critic.state_dict(),
         'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
         'critic_optimizer_state_dict': agent.critic_optimizer.state_dict()}, 
-            f'Saved models/{model_name}')
-    print(f"Model Saved in Saved models/{model_name}")
+            model_name)
+    print(f"Model Saved as {model_name}")
     
 if __name__ == "__main__":
     print("The file is run directly")
@@ -155,7 +155,9 @@ if __name__ == "__main__":
     # action_list = []
 
     # Training the agent
-    episodes = 1000
+    episodes = input("How many episodes do you want to train the agent for? ")
+    episodes = int(episodes) if episodes != "" else 1000
+
     for epoch in range(episodes + 1):
         state, _ = env.reset()
         total_reward = 0
@@ -180,7 +182,7 @@ if __name__ == "__main__":
 
             if done or truncated:
                 
-                # Normalize the states. Hope it helps.
+                # Normalize the states. This is important for the training process
                 state_mean = np.mean(states, axis=0)
                 state_std = np.std(states, axis=0)
                 states = (states - state_mean) / (state_std + 1e-8)
@@ -190,7 +192,11 @@ if __name__ == "__main__":
 
                 # Only print every n-th episode. Depends on the number of episodes
                 if (epoch + 1) % 10 == 0:
-                    print(f"Episode: {epoch + 1}, Total Reward: {total_reward}")
+                    # Of the epoch is a multiple of 100 print the epoch and reword in green
+                    if (epoch + 1) % 100 == 0:
+                        print(f"\033[92mEpisode: {epoch + 1}, Total Reward: {total_reward}\033[0m")
+                    else:
+                        print(f"Episode: {epoch + 1}, Total Reward: {total_reward}")
                 break
 
             # In case the training shows no progress, the training can be stopped manually
@@ -205,7 +211,4 @@ if __name__ == "__main__":
     # Save the trained DDPG agent
     save_agent(model_name)
 
-    # agent.save_target_values
 
-    # print(actions)
-    
