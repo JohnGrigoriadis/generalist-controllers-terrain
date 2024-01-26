@@ -41,7 +41,7 @@ INITIAL_RANDOM = 5
 
 HULL_POLY = [(-30, +9), (+6, +9), (+34, +1), (+34, -8), (-30, -8)]
 LEG_DOWN = -8 / SCALE
-LEG_W, LEG_H = 10 / SCALE, 50 / SCALE # 8, 34
+LEG_W, LEG_H = 8 / SCALE, 34 / SCALE # 8, 34
 
 VIEWPORT_W = 600
 VIEWPORT_H = 400
@@ -296,23 +296,39 @@ class BipedalWalker(gym.Env, EzPickle):
         damping_factor = self.noise
 
         for i in range(TERRAIN_LENGTH):
+
+            # Old terrain generation, I will keep it here for now, but I doubt I will use it again.
+            # x = i * TERRAIN_STEP
+            # self.terrain_x.append(x)
+
+            # if state == GRASS and not oneshot:
+
+            #     velocity = 1.0 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
+            #     if i > TERRAIN_STARTPAD:
+                    
+            #         if self.noise != 0.0:
+            #             damping_factor *= -1
+            #             velocity = damping_factor + self.slope
+            #         else:
+            #             damping_factor = self.slope
+            #             velocity = damping_factor
+
+            #     y += velocity
+
             x = i * TERRAIN_STEP
             self.terrain_x.append(x)
 
             if state == GRASS and not oneshot:
-
-                velocity = 1.0 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
+                velocity = 0.8 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
                 if i > TERRAIN_STARTPAD:
-                    
-
-                    if self.noise != 0.0:
-                        damping_factor *= -1
-                        velocity = damping_factor + self.slope
-                    else:
-                        damping_factor = self.slope
-                        velocity = damping_factor
-
-                y += velocity
+                    # velocity += self.np_random.uniform(-1, 1) / SqCALE  # 1
+                    velocity += self.slope * 5 / SCALE
+                    noise = self.np_random.uniform(-self.noise*10, self.noise*10) / SCALE  # 2
+                
+                else: 
+                    noise = 0.0
+                
+                y += velocity + noise
             
 
             elif state == PIT and oneshot:
@@ -792,8 +808,7 @@ class BipedalWalkerHardcore:
 
 
 if __name__ == "__main__":
-    # Heurisic: suboptimal, have no notion of balance.
-    env = BipedalWalker(render_mode="human", noise=0.5, hardcore=False, slope=0.8 )
+    env = BipedalWalker(render_mode="human", noise=0.7, hardcore=False, slope=0.3)
     env.reset()
     env.render()
     steps = 0
@@ -811,7 +826,7 @@ if __name__ == "__main__":
         total_reward += r
         # if steps % 20 == 0 or terminated or truncated:
         #     print("\naction " + str([f"{x:+0.2f}" for x in a]))
-        #     print(f"step {steps} total_reward {total_reward:+0.2f}")
+            # print(f"step {steps} total_reward {total_reward:+0.2f}")
         #     print("hull " + str([f"{x:+0.2f}" for x in s[0:4]]))
         #     print("leg0 " + str([f"{x:+0.2f}" for x in s[4:9]]))
         #     print("leg1 " + str([f"{x:+0.2f}" for x in s[9:14]]))
