@@ -170,7 +170,7 @@ class BipedalWalker(gym.Env, EzPickle):
         "render_fps": FPS,
     }
 
-    def __init__(self, render_mode: Optional[str] = None, hardcore: bool = False, noise: float = 0.0, slope: float = 0.5):
+    def __init__(self, render_mode: Optional[str] = None, hardcore: bool = False, noise: float = 0.0, slope: float = 0.0, load_terrain: str = None):
         EzPickle.__init__(self, render_mode, hardcore)
         self.isopen = True
 
@@ -183,6 +183,7 @@ class BipedalWalker(gym.Env, EzPickle):
         self.hardcore = hardcore
         self.noise = noise
         self.slope = slope
+        self.load_terrain = load_terrain
 
         self.fd_polygon = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)]),
@@ -280,6 +281,12 @@ class BipedalWalker(gym.Env, EzPickle):
         self.joints = []
 
     def _generate_terrain(self, hardcore):
+
+        if self.load_terrain is not None:
+            with open(self.load_terrain, 'rb') as file:
+                self.terrain = pickle.load(file)
+            return
+        
         GRASS, STUMP, STAIRS, PIT, _STATES_ = range(5)
         state = GRASS
         velocity = 0.0
@@ -815,8 +822,7 @@ class BipedalWalkerHardcore:
 
 
 if __name__ == "__main__":
-    env = BipedalWalker(render_mode="human", noise=1.0, hardcore=False, slope=-0.2)
-    # env.terrain
+    env = BipedalWalker(render_mode="human", noise=1.0, hardcore=False, slope=-0.2, load_terrain=None)
     env.reset()
     env.render()
     steps = 0
