@@ -10,6 +10,7 @@ from gym import error, spaces
 from gym.error import DependencyNotInstalled
 from gym.utils import EzPickle
 
+import pickle
 import keyboard as kb
 
 try:
@@ -293,7 +294,7 @@ class BipedalWalker(gym.Env, EzPickle):
         original_y = 0
 
         # damping_steps = 7
-        damping_factor = self.noise
+        # damping_factor = self.noise
 
         for i in range(TERRAIN_LENGTH):
 
@@ -433,7 +434,13 @@ class BipedalWalker(gym.Env, EzPickle):
             color = (102, 153, 76)
             poly += [(poly[1][0], 0), (poly[0][0], 0)]
             self.terrain_poly.append((poly, color))
+
+        
         self.terrain.reverse()
+
+        # Save the terrain
+        # with open(f'Saved_terrains/terrain_data{self.slope}_{self.noise}.pkl', 'wb') as file:
+        #     pickle.dump(self.terrain, file)
 
     def _generate_clouds(self):
         # Sorry for the clouds, couldn't resist
@@ -808,7 +815,8 @@ class BipedalWalkerHardcore:
 
 
 if __name__ == "__main__":
-    env = BipedalWalker(render_mode="human", noise=0.7, hardcore=False, slope=0.3)
+    env = BipedalWalker(render_mode="human", noise=1.0, hardcore=False, slope=-0.2)
+    # env.terrain
     env.reset()
     env.render()
     steps = 0
