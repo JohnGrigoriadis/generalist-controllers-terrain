@@ -10,7 +10,7 @@ from gym import error, spaces
 from gym.error import DependencyNotInstalled
 from gym.utils import EzPickle
 
-import pickle
+import json
 import keyboard as kb
 
 try:
@@ -29,6 +29,8 @@ except ImportError:
 
 if TYPE_CHECKING:
     import pygame
+
+np.random.seed(42)
 
 FPS = 50
 SCALE = 30.0  # affects how fast-paced the game is, forces should be adjusted as well
@@ -281,11 +283,6 @@ class BipedalWalker(gym.Env, EzPickle):
         self.joints = []
 
     def _generate_terrain(self, hardcore):
-
-        if self.load_terrain is not None:
-            with open(self.load_terrain, 'rb') as file:
-                self.terrain = pickle.load(file)
-            return
         
         GRASS, STUMP, STAIRS, PIT, _STATES_ = range(5)
         state = GRASS
@@ -331,7 +328,7 @@ class BipedalWalker(gym.Env, EzPickle):
                 if i > TERRAIN_STARTPAD:
                     # velocity += self.np_random.uniform(-1, 1) / SqCALE  # 1
                     velocity += self.slope * 5 / SCALE
-                    noise = self.np_random.uniform(-self.noise*10, self.noise*10) / SCALE  # 2
+                    noise = np.random.uniform(-self.noise*10, self.noise*10) / SCALE  # 2
                 
                 else: 
                     noise = 0.0
@@ -446,8 +443,8 @@ class BipedalWalker(gym.Env, EzPickle):
         self.terrain.reverse()
 
         # Save the terrain
-        # with open(f'Saved_terrains/terrain_data{self.slope}_{self.noise}.pkl', 'wb') as file:
-        #     pickle.dump(self.terrain, file)
+        # with open('generalist-controllers-terrain/Terrain Gen/Saved_terrains/terrain_data_test.json', 'w') as file:
+        #     json.dump(self.terrain, file)
 
     def _generate_clouds(self):
         # Sorry for the clouds, couldn't resist
@@ -822,7 +819,7 @@ class BipedalWalkerHardcore:
 
 
 if __name__ == "__main__":
-    env = BipedalWalker(render_mode="human", noise=1.0, hardcore=False, slope=-0.2, load_terrain=None)
+    env = BipedalWalker(render_mode="human", noise=0.5, hardcore=False, slope=0.2, load_terrain=None)
     env.reset()
     env.render()
     steps = 0
@@ -904,7 +901,11 @@ if __name__ == "__main__":
         env.render()
 
         if terminated or truncated:
+            # print(env.terrain)
             break
 
         if kb.is_pressed("q"):
+            # print(type(env.terrain[0]))
             break
+
+    
