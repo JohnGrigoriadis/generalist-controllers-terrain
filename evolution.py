@@ -19,10 +19,15 @@ Things to do:
 2. See if the noise added to the weights is correct (maybe ther eis a better way to do it)
 3. The first simulation seems to be in terrain 2, not terrain 1. Why? #fixed
 4. At the end of the experiment, all weights are saved. This is slow and not very space efficient. Maybe save only the best weights?
-5. Save the good and bad terrains. Anil did it in his so he maybe want me to do it too.
+5. Save the good and bad terrains?
+6. The NN outputs stay the same after some time. This makes the agent "freeze" and not move. Maybe add some noise to the output of the NN?
+    a. Adding bias to the layers of the NN made the performance better. 
+    b. Good results for 100 generations. Must test for more generations.
+7. Reward from experiments does not match the reward from the environment when rendering afterwards. Why?
 
 Notes to self:
 1. O(g,p) worst case time complexity is about 25 seconds for g=5 and p=10
+2. Muation noise is best between 0.01 and 0.1. 0.1 is the best for now.
 
 """
 
@@ -39,25 +44,26 @@ def generate_terrain(noise_range, slope_range, step_size):
 class NeuralNetwork(nn.Module):
     def __init__(self, state_size, action_size):
         super(NeuralNetwork, self).__init__()  # Call the parent class constructor
-        self.layer1 = nn.Linear(state_size, 20)  
+        self.layer1 = nn.Linear(state_size, 20)
         self.layer2 = nn.Linear(20, action_size)
         self.tahn = nn.Tanh()
-    
+        self.bias1 = nn.Parameter(torch.zeros(20))  # Bias for layer 1
+        self.bias2 = nn.Parameter(torch.zeros(action_size))  # Bias for layer 2
+
     def forward(self, state):
-        state = torch.Tensor(state) # Convert state to a Tensor
-        # state = state.view(1, -1)  # Reshape the state tensor to be a matrix
-        x = self.tahn(self.layer1(state))
-        print(x)
-        x = self.tahn(self.layer2(x))
+        state = torch.Tensor(state)  # Convert state to a Tensor
+        x = self.tahn(self.layer1(state) + self.bias1)  # Add bias to layer 1
+        x = self.tahn(self.layer2(x) + self.bias2)  # Add bias to layer 2
         return x
 
     def get_weights(self):
-        return [self.layer1.weight, self.layer2.weight]
-    
+        return [self.layer1.weight, self.layer1.bias, self.layer2.weight, self.layer2.bias]
+
     def set_weights(self, weights):
         self.layer1.weight = nn.Parameter(weights[0])
-        self.layer2.weight = nn.Parameter(weights[1])
-        # print(self.layer1.weight)
+        self.layer1.bias = nn.Parameter(weights[1])
+        self.layer2.weight = nn.Parameter(weights[2])
+        self.layer2.bias = nn.Parameter(weights[3])
     
 
 # Test to make sure that the NN and weights are working
@@ -110,7 +116,7 @@ class EVO():
         new_pop = []
 
         for _ in range(self.pop_num):
-            new_pop.append([torch.Tensor(weight.detach().numpy() + np.random.uniform(-0.01, 0.011, size=weight.shape)) for weight in weights])
+            new_pop.append([torch.Tensor(weight.detach().numpy() + np.random.uniform(-0.1, 0.11, size=weight.shape)) for weight in weights])
 
 
         self.population = new_pop
@@ -162,9 +168,6 @@ class EVO():
         for individual in population:
             rewards.append(self.run_simulation(individual))
 
-        # Save the best performing weights and the reward every 100 generations
-        if gen % 10 == 0:
-            self.best_per_gen.append([population[np.argmax(rewards)], max(rewards)])
 
         return [population[np.argmax(rewards)], max(rewards)]
     
@@ -217,11 +220,15 @@ class EVO():
             self.env.noise, self.env.slope = self.terrains[self.ter_num]
 
             # Print some info to keep an eye on the progress
-            if gen % 5 == 0:
+            if gen % 1 == 0:
                 print(f"Generation: {gen}")
-                print(f"Best reward: {self.memory[-1]}")
-                print(f"Terrain: {self.ter_num}")
+                print(f"Best reward of generation: {reward:6f}")
+                print(f"Terrain: Slope={env.slope:.2f}, Noise={env.noise:.2f}")
                 print("")
+
+        # Save the best performing weights and the reward every 100 generations
+        if gen % 10 == 0:
+            self.best_per_gen.append([weights, reward])
 
         return self.best_per_gen
 
@@ -234,14 +241,14 @@ if __name__ == "__main__":
     network = NeuralNetwork(state_size, action_size)
 
     noise_range = [0.0, 1.1] # I want to include 1.0 
-    slope_range = [0.0, 1.1] # I want to include 1.0
+    slope_range = [-0.5, 0.5] # I want to include 1.0
     step_size = 0.1
 
     terrain_params = generate_terrain(noise_range, slope_range, step_size) # 100 terrains at the moment with the current step size
 
 
-    population_size = 1
-    generations = 1
+    population_size = 10
+    generations = 100
     xnes = EVO(population_size, env, network, terrain_params, generations)
 
     # Lets hope this works
@@ -250,5 +257,5 @@ if __name__ == "__main__":
     # end = time.time()
     # print(f"Time taken: {end - start}")
     
-    # print(generalist_weights[-1])
-    torch.save(generalist_weights, 'generalist-controllers-terrain/Terrain Gen/best_weights.pt')
+    # print(f"Final reward{generalist_weights[-1]}")
+    # torch.save(generalist_weights[-1][0], "generalist-controllers-terrain/Terrain Gen/best_weights.pt")
