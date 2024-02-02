@@ -18,15 +18,13 @@ Things to do:
     a. prob because i wasn't incrementing s # fixed
 2. See if the noise added to the weights is correct (maybe ther eis a better way to do it)
 3. The first simulation seems to be in terrain 2, not terrain 1. Why? #fixed
+4. At the end of the experiment, all weights are saved. This is slow and not very space efficient. Maybe save only the best weights?
+5. Save the good and bad terrains. Anil did it in his so he maybe want me to do it too.
 
 Notes to self:
 1. O(g,p) worst case time complexity is about 25 seconds for g=5 and p=10
 
 """
-
-noise_range = [0.0, 1.1] # I want to include 1.0 
-slope_range = [0.0, 1.1] # I want to include 1.0
-step_size = 0.2
 
 def generate_terrain(noise_range, slope_range, step_size):
     noise_values = np.arange(noise_range[0], noise_range[1], step_size)
@@ -49,6 +47,7 @@ class NeuralNetwork(nn.Module):
         state = torch.Tensor(state) # Convert state to a Tensor
         # state = state.view(1, -1)  # Reshape the state tensor to be a matrix
         x = self.tahn(self.layer1(state))
+        print(x)
         x = self.tahn(self.layer2(x))
         return x
 
@@ -56,10 +55,9 @@ class NeuralNetwork(nn.Module):
         return [self.layer1.weight, self.layer2.weight]
     
     def set_weights(self, weights):
-        with torch.no_grad():
-            self.layer1.weight = nn.Parameter(weights[0])
-            self.layer2.weight = nn.Parameter(weights[1])
-            # print(self.layer1.weight)
+        self.layer1.weight = nn.Parameter(weights[0])
+        self.layer2.weight = nn.Parameter(weights[1])
+        # print(self.layer1.weight)
     
 
 # Test to make sure that the NN and weights are working
@@ -96,6 +94,7 @@ class EVO():
         self.ter_num = 0
         self.best_per_gen = []
         self.steps = 1600 # The number of steps to run the simulation for
+        self.memory = [] # Used to store the weights of the last few generations.
 
         # Using GPU will speed up the process. So I hope it works.
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -111,38 +110,50 @@ class EVO():
         new_pop = []
 
         for _ in range(self.pop_num):
-            new_pop.append([weight + torch.randn_like(weight) for weight in weights])
+            new_pop.append([torch.Tensor(weight.detach().numpy() + np.random.uniform(-0.01, 0.011, size=weight.shape)) for weight in weights])
+
 
         self.population = new_pop
+
+        # Also add the original weights to the population
+        self.population.append(weights)
+
        
 
-    def run_simulation(self, weights: List[List[torch.Tensor]]) -> float:
+    def run_simulation(self, weights: List[torch.Tensor]) -> float:
         """
         This function runs one simulation of the environment with the given weights and returns the reward.
         """
 
-        self.env.noise, self.env.slope = self.terrains[self.ter_num] 
+         
         state, _ = self.env.reset()
         self.network.set_weights(weights)
         total_reward = 0
         s = 0
         while True:
             state = torch.FloatTensor(state).to(self.device)
-            with torch.no_grad():
-                action = self.network(state).detach().numpy()
+            action = self.network.forward(state).detach().cpu().numpy()
+
             state, reward, done, truncated, _ = self.env.step(action)
 
             total_reward += reward
             
+            # Increment the number of steps
             s += 1
-            if done or truncated or (kb.is_pressed('q') and kb.is_pressed("l")) or s > self.steps:
+
+            # If the goal is reached, the simulation is truncated or the number of steps is reached, the simulation stops
+            if done or truncated or kb.is_pressed('esc') or s > self.steps:
                 break
-        
+
+            # If the user presses 'q' and 'l' at the same time, the entire experiment stops
+            # failsafe to stop the simulation
+            if (kb.is_pressed('q') and kb.is_pressed("l")):
+                exit()
         
         return total_reward
     
 
-    def run_and_return_best(self, population) -> List[torch.Tensor]:
+    def run_and_return_best(self, population : List[torch.Tensor], gen:int) -> List[torch.Tensor]:
         """
         This function runs one simulation for each mutation and returns the weights of the best performing mutation.
         """
@@ -150,10 +161,12 @@ class EVO():
         rewards = []
         for individual in population:
             rewards.append(self.run_simulation(individual))
-        
-        self.best_per_gen.append([population[np.argmax(rewards)], max(rewards)])
 
-        return population[np.argmax(rewards)]
+        # Save the best performing weights and the reward every 100 generations
+        if gen % 10 == 0:
+            self.best_per_gen.append([population[np.argmax(rewards)], max(rewards)])
+
+        return [population[np.argmax(rewards)], max(rewards)]
     
 
     def main(self) -> None:
@@ -177,24 +190,36 @@ class EVO():
 
         # Get initial weights
         weights = self.network.get_weights()
-        weights = self.run_and_return_best([weights])
+        weights, reward = self.run_and_return_best([weights], 100)
+        self.memory = [weights, reward]
  
         # Start loop
-        for gen in range(self.generations - 1):
-            # Mutate weights
+        for gen in range(self.generations + 1):
+
+            # Mutate weights and make the mutations the new self.population
             self.mutate(weights)
 
-            # Get best performing weights
-            weights = self.run_and_return_best(self.population)
 
+            # Get best performing weights from the new self.population
+            weights, reward = self.run_and_return_best(self.population, gen)
+
+            # If the reward is better than the previous best reward, save the weights, else revert back to the previous weights
+            if reward > self.memory[-1]:
+                self.memory = [weights, reward]
+            else:
+                weights = self.memory[0]
+
+            # Increment the terrain number
             self.ter_num += 1
             if self.ter_num == len(self.terrains):
                 self.ter_num = 0
 
+            self.env.noise, self.env.slope = self.terrains[self.ter_num]
 
-            if gen % 1 == 0:
-                print(f"Generation: {gen+1}")
-                print(f"Best reward: {self.best_per_gen[-1][-1]}")
+            # Print some info to keep an eye on the progress
+            if gen % 5 == 0:
+                print(f"Generation: {gen}")
+                print(f"Best reward: {self.memory[-1]}")
                 print(f"Terrain: {self.ter_num}")
                 print("")
 
@@ -208,12 +233,15 @@ if __name__ == "__main__":
     state_size, action_size = 24, 4
     network = NeuralNetwork(state_size, action_size)
 
+    noise_range = [0.0, 1.1] # I want to include 1.0 
+    slope_range = [0.0, 1.1] # I want to include 1.0
+    step_size = 0.1
 
-    terrain_params = generate_terrain(noise_range, slope_range, step_size) # 36 terrains at the moment with the current step size
-    # print(terrain_params.shape) 
+    terrain_params = generate_terrain(noise_range, slope_range, step_size) # 100 terrains at the moment with the current step size
 
-    population_size = 10
-    generations = 5
+
+    population_size = 1
+    generations = 1
     xnes = EVO(population_size, env, network, terrain_params, generations)
 
     # Lets hope this works
