@@ -7,9 +7,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-import random
-# import keyboard as kb
+
 import time
+import json
 
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
@@ -25,9 +25,8 @@ class NeuralNetwork(nn.Module):
         - Activation function: Tanh
     """
 
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, hidden_size, action_size):
         super(NeuralNetwork, self).__init__()  # Call the parent class constructor
-        hidden_size = 20 
         self.layer1 = nn.Linear(state_size, hidden_size)
         self.layer2 = nn.Linear(hidden_size, action_size)
         
@@ -65,10 +64,11 @@ class EVO():
     - terrain_params: List of terrain parameters (noise, slope)
     '''
 
-    def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params):
+    def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params, max_fitness = 250):
         self.env = env
         self.net = net
         self.terrain_params = terrain_params
+        self.max_fitness = max_fitness
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.state_size = self.env.observation_space.shape[0]
@@ -93,7 +93,7 @@ class EVO():
             action = net.forward(obs).detach().numpy()
 
             obs, reward, terminated, truncated, _  = self.env.step(action)
-            
+
             s += 1
             total_reward += reward
             
@@ -131,7 +131,7 @@ class EVO():
             searcher.step()
             fitness = searcher.status["best"].evals 
 
-            if gen % 10 == 0:
+            if gen % 100 == 0:
                 print(f"Generation: {gen+1}, Best Fitness: {round(fitness[0].item(), 3)}")
 
             self.ter_num +=1
@@ -140,8 +140,8 @@ class EVO():
             
             # Save the first individual that reaches a fitness of 250 
             # More or less a fail-safe to keep at least one good individual, in case the evolution fails after a certain point.
-            if fitness[0].item() > 250 and save:
-                save_path = "generalist-controllers-terrain\XNES_Biped\XNES_BipedWalker_300.pt"
+            if fitness[0].item() >= self.max_fitness and save:
+                save_path = "generalist-controllers-terrain\XNES_Biped\XNES_BipedWalker_250.pt"
                 torch.save(searcher.status["best"].values, save_path)
                 save = False
                 
@@ -152,29 +152,37 @@ def experiment():
     """
     Maybe make a json file to load all the parameters from.
     """
+    # load the json file biped_exp.json
+    with open('biped_exp.json') as f:
+        data = json.load(f)
+
     start = time.time()
+
     env = BipedalWalker()
     
-    state_size, action_size = 24, 4
-    net = NeuralNetwork(state_size, action_size)
+    state_size, hidden_size, action_size = data["NN-struc"]
+    net = NeuralNetwork(state_size, hidden_size, action_size)
 
-    noise_range = [0.0, 1.1] # I want to include 1.0 
-    slope_range = [-0.5, 0.5] # Slope 0.5 is already pretty steep
+    noise_range = data["noise"] # [0.0, 1.1]  I want to include 1.0 
+    slope_range = data["slope"]#[-0.5, 0.5] Slope 0.5 is already pretty steep
+    step_size = data["step_size"] # 0.1
 
-    step_size = 0.1
     terrain_params = generate_terrain(noise_range, slope_range, step_size) # 100 terrains at the moment with the current step size
     
-    sigma = 0.1
+    sigma = data["stdev_init"]
     # At the moment the population is chosen automatically by XNES (23), but I can set it manually 
-    pSize = 25 
-    generations = 5000
+    pSize = data["population"]
+    generations = data["generations"]
+    target_fitness = data["targetFitness"]
     
-    evo = EVO(env, net, terrain_params)
+    evo = EVO(env, net, terrain_params, target_fitness)
     searcher = evo.run(generations = generations, pSize = pSize, sigma = sigma)
     
     end = time.time()
-    time_taken = (end - start) / 60  # Convert time to minutes
-    print(f"Time taken: {time_taken} minutes")
+    print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
+
+    save_path = f"generalist-controllers-terrain\XNES_Biped\{data["filename"]}.pt"
+    torch.save(searcher.status["best"].values, save_path)
 
     return searcher
 
@@ -182,6 +190,3 @@ if __name__ == "__main__":
     searcher = experiment()
 
     print(searcher.status["best"].values, searcher.status["best"].evals)
-
-    save_path = "generalist-controllers-terrain\XNES_Biped\XNES_BipedWalker500.pt"
-    torch.save(searcher.status["best"].values, save_path)
