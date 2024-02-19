@@ -1,13 +1,18 @@
-# Scope
-This repository contains my progress and attempts for the project with the title "*Evolving Generalist Controllers for Variant Terrain Layouts*" (title work in progress).
+# Evolving Generalist Controllers for Varying Terrain Layouts
+This repository contains the implementation for the research paper titled "Evolving Generalist Controllers for Varying Terrain Layouts". The paper addresses the limited understanding of robustness and generalisability in neuro-evolutionary methods, specifically focusing on artificial neural networks (ANNs) used in control tasks, such as those applied in robotics.
 
-# Library
-The project uses the "BipedalWalker-v3" environment of the Gymnasium library, a continuation of the Gym library created for __Reinforcement Learning__ by OpenAI.
-To use the library you will need to run:
+# Running Experiments and Simulations
+1. The project uses the "BipedalWalker-v3" environment of the Gymnasium library, a continuation of the Gym library created for __Reinforcement Learning__ by OpenAI.
+   To use the library you will need to run:
 
-`pip install gymnasium`
+  `pip install gymnasium swig gymnasium[box2d]`
 
-## Possible Extra Libraries
-The BipedalWalker requires the Box2D environment to run. So you might need to additionally run this dependency:
+  Also, the other libraries used in the experiments can be installed using:
 
-`pip install gymnasium[box2d]`
+  `pip install numpy evotorch pytorch pandas`
+
+2. Run the experiments using the following command:
+  `python XNES_BipedalWalker.py`
+
+3. Run the visualisation of the results using the following command:
+   `python visualiise_biped.py`
