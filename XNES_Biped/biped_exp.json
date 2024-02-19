@@ -1,0 +1,15 @@
+{
+    "targetFitness": 250,
+    "nStep": 1600,
+    "NN-struc": [24, 20, 4],
+    "stdev_init": 0.1,
+    "initial_bounds": [-0.00001, 0.00001],
+    "population" : 25,
+    "generations": 5000,
+    "filename": "Results_Biped",
+    "//comment": "Parameter1 is the noise level",
+    "noise": [0.0, 1.1],
+    "//comment2": "Parameter2 is the slope of the terrain",
+    "slope": [-0.5, 0.5],
+    "step_size": 0.1
+}
