@@ -12,7 +12,7 @@ This repository contains the implementation for the research paper titled "Evolv
   `pip install numpy evotorch pytorch pandas time keyboard`
 
    Alternatively, you could install the packages using the requirements.txt file
-   `pip install requirements.txt`
+   `pip install -r requirements.txt`
    
 2. Run the experiments using the following command:
   `python XNES_BipedalWalker.py`
