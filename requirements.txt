@@ -1,0 +1,9 @@
+gymnasium 
+swig 
+gymnasium[box2d]
+numpy
+evotorch 
+pytorch 
+pandas 
+time 
+keyboard
