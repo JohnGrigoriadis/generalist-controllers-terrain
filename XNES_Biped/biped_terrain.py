@@ -105,19 +105,30 @@ class ContactDetector(contactListener):
 
 class BipedalWalker(gym.Env, EzPickle):
     """
+    This is a modified version of the BipedalWalker.py file provided by the developers. 
+
+
     ### Description
     This is a simple 4-joint walker robot environment.
-    There are two versions:
-    - Normal, with slightly uneven terrain.
-    - Hardcore, with ladders, stumps, pitfalls.
+    There are two main versions and a custom version:
+    - Normal, with slightly uneven horizontal terrain.
+    - Hardcore, with ladders, stumps and pitfalls.
+    - Custom, with varying noise and slope levels.
 
-    To solve the normal version, you need to get 300 points in 1600 time steps.
+    To solve the normal version (noise=0.1, slope=0.0), you need to get 300 points in 1600 time steps.
     To solve the hardcore version, you need 300 points in 2000 time steps.
 
+    This modified version has a more advanced terrain generation function which can add noise 
+    (ruggedness) and change the slope of the terrain.
+        - These extra features make the environment harder to solve, thus in order to consider the environment 
+          *solved* the agent now needs 250 points in 1600 time steps
+        - The hardcore version works the same way but is practically unsolvable on very high slopes.
+            - I will possibly modify the hardcore mode to make it (more) solvable.
+        
     A heuristic is provided for testing. It's also useful to get demonstrations
     to learn from. To run the heuristic:
     ```
-    python gym/envs/box2d/bipedal_walker.py
+    python biped_terrain.py
     ```
 
     ### Action Space
@@ -138,6 +149,8 @@ class BipedalWalker(gym.Env, EzPickle):
     ### Starting State
     The walker starts standing at the left end of the terrain with the hull
     horizontal, and both legs in the same position with a slight knee angle.
+    The noise and slope parameters as set to 0.1 and 0 respectively for the 
+    starting pad to make the first few steps easy.
 
     ### Episode Termination
     The episode will terminate if the hull gets in contact with the ground or
