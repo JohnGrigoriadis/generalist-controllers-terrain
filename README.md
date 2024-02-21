@@ -9,7 +9,7 @@ This repository contains the implementation for the research paper titled "Evolv
 
   Also, the other libraries used in the experiments can be installed using:
 
-  `pip install numpy evotorch pytorch pandas time`
+  `pip install numpy evotorch pytorch pandas time keyboard`
 
 2. Run the experiments using the following command:
   `python XNES_BipedalWalker.py`
