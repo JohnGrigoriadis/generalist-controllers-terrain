@@ -121,7 +121,7 @@ class EVO():
         searcher = XNES(
             problem,
             stdev_init = sigma,
-            # popsize = pSize  
+            popsize = pSize  
                 )
         print(searcher._popsize)
 
@@ -150,7 +150,7 @@ class EVO():
 
 def experiment():
     """
-    Maybe make a json file to load all the parameters from.
+    Runs the experiment and evolution process.
     """
     # load the json file biped_exp.json
     with open('biped_exp.json') as f:
@@ -181,7 +181,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain\XNES_Biped\{data["filename"]}.pt"
+    save_path = f"generalist-controllers-terrain\XNES_Biped\{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
