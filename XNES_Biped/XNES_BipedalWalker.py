@@ -132,7 +132,7 @@ class EVO():
             fitness = searcher.status["best"].evals 
 
             if gen % 100 == 0:
-                print(f"Generation: {gen+1}, Best Fitness: {round(fitness[0].item(), 3)}")
+                print(f"Generation: {gen}, Best Fitness: {round(fitness[0].item(), 3)}")
 
             self.ter_num +=1
             if self.ter_num == len(self.terrain_params):
