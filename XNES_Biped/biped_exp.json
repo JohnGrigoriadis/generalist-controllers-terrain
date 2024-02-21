@@ -4,7 +4,7 @@
     "NN-struc": [24, 20, 4],
     "stdev_init": 0.1,
     "initial_bounds": [-0.00001, 0.00001],
-    "population" : 25,
+    "population" : 30,
     "generations": 5000,
     "filename": "Results_Biped",
     "//comment": "Parameter1 is the noise level",
