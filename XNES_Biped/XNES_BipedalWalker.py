@@ -1,46 +1,14 @@
 
 from biped_terrain import BipedalWalker
+from network import NeuralNetwork
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-
-
 import time
 import json
 
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
-
-# Neural network
-class NeuralNetwork(nn.Module):
-    """
-    3 layer neural network:
-        - Input layer: 24 nodes
-        - Hidden layer: 20 nodes
-        - Output layer: 4 nodes
-
-        - Activation function: Tanh
-    """
-
-    def __init__(self, state_size, hidden_size, action_size):
-        super(NeuralNetwork, self).__init__()  # Call the parent class constructor
-        self.layer1 = nn.Linear(state_size, hidden_size)
-        self.layer2 = nn.Linear(hidden_size, action_size)
-        
-        self.act1 = nn.Tanh()
-        self.act2 = nn.Tanh()
-
-    
-    def forward(self, state):
-        state = torch.Tensor(state)  # Convert state to a Tensor
-        x = self.act1(self.layer1(state))
-        x = self.act2(self.layer2(x))
-        return x
-
-# net = NeuralNetwork(24, 4)
         
 # Generate terrains to test the generalist controller on
 def generate_terrain(noise_range, slope_range, step_size):
@@ -69,13 +37,14 @@ class EVO():
         self.net = net
         self.terrain_params = terrain_params
         self.max_fitness = max_fitness
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.net.to(self.device)
 
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.shape[0]
         
-
-        self.ter_num = 17
+        self.ter_num = 0
 
     def evaluation_function(self, net: NeuralNetwork):
 
@@ -113,7 +82,7 @@ class EVO():
         problem = NEProblem(
             objective_sense="max",  
             network_eval_func= self.evaluation_function,
-            network=self.net, 
+            network=NeuralNetwork(24, 20, 4),
             num_actors= 0, # Number of parallel evaluations.
             initial_bounds=(-0.00001, 0.00001)
                 )
@@ -123,7 +92,7 @@ class EVO():
             stdev_init = sigma,
             popsize = pSize  
                 )
-        print(searcher._popsize)
+        print(f"Population: {searcher._popsize}, Generations: {generations}")
 
         save = True
 
@@ -149,11 +118,9 @@ class EVO():
 
 
 def experiment():
-    """
-    Runs the experiment and evolution process.
-    """
-    # load the json file biped_exp.json
-    with open('biped_exp.json') as f:
+
+    # Load the json file biped_exp.json
+    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as f:
         data = json.load(f)
 
     start = time.time()
