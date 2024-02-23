@@ -12,18 +12,24 @@ from evotorch.neuroevolution import NEProblem
         
 # Generate terrains to test the generalist controller on
 def generate_terrain(noise_range, slope_range, step_size):
+    """
+        The terrains are shuffled in a way that the slope changes every generation, 
+        once all slopes are visited the noise is increased.
+
+        This makes it so the task starts a bit easier in the beginning and it gets 
+        harder as the noise level increases.
+    """
+        
     noise_values = np.arange(noise_range[0], noise_range[1], step_size)
     slope_values = np.arange(slope_range[0], slope_range[1], step_size)
 
     terrains = np.array(np.meshgrid(noise_values, slope_values)).T.reshape(-1, 2)
-
-    # I could shuffle the terrains to make the evolution more interesting. But I will keep them in order for now.
-
+        
     return terrains
 
 class EVO():
     '''
-    With the normal environment, the total_reward goal is 300, but since the varying terrains make the environment harder, 
+    With the normal environment (noise=0.1, slope=0.0), the total_reward goal is 300, but since the varying terrains make the environment harder, 
     I will set the goal to 250.
     
     Parameters:
