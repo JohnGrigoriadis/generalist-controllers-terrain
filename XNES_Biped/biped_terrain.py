@@ -12,6 +12,9 @@ from gym.utils import EzPickle
 
 import json
 import keyboard as kb
+import torch
+
+from network import NeuralNetwork, fill_parameters, parameterize_net
 
 try:
     import Box2D
@@ -30,8 +33,6 @@ except ImportError:
 if TYPE_CHECKING:
     import pygame
 
-np.random.seed(42)
-
 FPS = 50
 SCALE = 30.0  # affects how fast-paced the game is, forces should be adjusted as well
 
@@ -46,12 +47,12 @@ HULL_POLY = [(-30, +9), (+6, +9), (+34, +1), (+34, -8), (-30, -8)]
 LEG_DOWN = -8 / SCALE
 LEG_W, LEG_H = 8 / SCALE, 34 / SCALE # 8, 34
 
-VIEWPORT_W = 600
-VIEWPORT_H = 400
+VIEWPORT_W = 800
+VIEWPORT_H = 400*2
 
 TERRAIN_STEP = 14 / SCALE
 TERRAIN_LENGTH = 200  # in steps
-TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 4
+TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 2
 TERRAIN_GRASS = 10  # low long are grass spots, in steps
 TERRAIN_STARTPAD = 20  # in steps
 FRICTION = 2.5
@@ -105,30 +106,19 @@ class ContactDetector(contactListener):
 
 class BipedalWalker(gym.Env, EzPickle):
     """
-    This is a modified version of the BipedalWalker.py file provided by the developers. 
-
-
     ### Description
     This is a simple 4-joint walker robot environment.
-    There are two main versions and a custom version:
-    - Normal, with slightly uneven horizontal terrain.
-    - Hardcore, with ladders, stumps and pitfalls.
-    - Custom, with varying noise and slope levels.
+    There are two versions:
+    - Normal, with slightly uneven terrain.
+    - Hardcore, with ladders, stumps, pitfalls.
 
-    To solve the normal version (noise=0.1, slope=0.0), you need to get 300 points in 1600 time steps.
+    To solve the normal version, you need to get 300 points in 1600 time steps.
     To solve the hardcore version, you need 300 points in 2000 time steps.
 
-    This modified version has a more advanced terrain generation function which can add noise 
-    (ruggedness) and change the slope of the terrain.
-        - These extra features make the environment harder to solve, thus in order to consider the environment 
-          *solved* the agent now needs 250 points in 1600 time steps
-        - The hardcore version works the same way but is practically unsolvable on very high slopes.
-            - I will possibly modify the hardcore mode to make it (more) solvable.
-        
     A heuristic is provided for testing. It's also useful to get demonstrations
     to learn from. To run the heuristic:
     ```
-    python biped_terrain.py
+    python gym/envs/box2d/bipedal_walker.py
     ```
 
     ### Action Space
@@ -149,8 +139,6 @@ class BipedalWalker(gym.Env, EzPickle):
     ### Starting State
     The walker starts standing at the left end of the terrain with the hull
     horizontal, and both legs in the same position with a slight knee angle.
-    The noise and slope parameters as set to 0.1 and 0 respectively for the 
-    starting pad to make the first few steps easy.
 
     ### Episode Termination
     The episode will terminate if the hull gets in contact with the ground or
@@ -185,7 +173,7 @@ class BipedalWalker(gym.Env, EzPickle):
         "render_fps": FPS,
     }
 
-    def __init__(self, render_mode: Optional[str] = None, hardcore: bool = False, noise: float = 0.0, slope: float = 0.0, load_terrain: str = None):
+    def __init__(self, render_mode: Optional[str] = None, hardcore: bool = False, noise: float = 0.0, slope: float = 0.0):
         EzPickle.__init__(self, render_mode, hardcore)
         self.isopen = True
 
@@ -198,7 +186,6 @@ class BipedalWalker(gym.Env, EzPickle):
         self.hardcore = hardcore
         self.noise = noise
         self.slope = slope
-        self.load_terrain = load_terrain
 
         self.fd_polygon = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)]),
@@ -339,12 +326,14 @@ class BipedalWalker(gym.Env, EzPickle):
             if state == GRASS and not oneshot:
                 velocity = 0.8 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
                 if i > TERRAIN_STARTPAD:
-                    # velocity += self.np_random.uniform(-1, 1) / SqCALE  # 1
-                    velocity += self.slope * 5 / SCALE
-                    noise = np.random.uniform(-self.noise*10, self.noise*10) / SCALE  # 2
+                    # velocity += self.np_random.uniform(-1, 1) / SCALE  # 1
+                    velocity += self.slope * 3 / SCALE
+                    noise = self.np_random.uniform(-self.noise*10, self.noise*10) / SCALE  # 2
                 
                 else: 
-                    noise = 0.0
+                    # New version, noise starts from the beginning, no grace period
+                    # noise = self.np_random.uniform(-self.noise*10, self.noise*10) / SCALE  # 3
+                    noise = self.np_random.uniform(-1, 1) / SCALE  # 3
                 
                 y += velocity + noise
             
@@ -455,10 +444,6 @@ class BipedalWalker(gym.Env, EzPickle):
         
         self.terrain.reverse()
 
-        # Save the terrain
-        # with open('generalist-controllers-terrain/Terrain Gen/Saved_terrains/terrain_data_test.json', 'w') as file:
-        #     json.dump(self.terrain, file)
-
     def _generate_clouds(self):
         # Sorry for the clouds, couldn't resist
         self.cloud_poly = []
@@ -486,7 +471,8 @@ class BipedalWalker(gym.Env, EzPickle):
         seed: Optional[int] = None,
         options: Optional[dict] = None,
     ):
-        super().reset(seed=seed)
+        # Setting the seed to a fixed value for reproducibility
+        super().reset(seed=42)
         self._destroy()
         self.world.contactListener_bug_workaround = ContactDetector(self)
         self.world.contactListener = self.world.contactListener_bug_workaround
@@ -634,7 +620,7 @@ class BipedalWalker(gym.Env, EzPickle):
         state += [l.fraction for l in self.lidar]
         assert len(state) == 24
 
-        self.scroll = pos.x - VIEWPORT_W / SCALE / 5
+        self.scroll = pos.x - VIEWPORT_W / SCALE / 5        
 
         shaping = (
             130 * pos[0] / SCALE
@@ -821,104 +807,42 @@ class BipedalWalker(gym.Env, EzPickle):
             self.isopen = False
 
 
-class BipedalWalkerHardcore:
-    def __init__(self):
-        raise error.Error(
-            "Error initializing BipedalWalkerHardcore Environment.\n"
-            "Currently, we do not support initializing this mode of environment by calling the class directly.\n"
-            "To use this environment, instead create it by specifying the hardcore keyword in gym.make, i.e.\n"
-            'gym.make("BipedalWalker-v3", hardcore=True)'
-        )
-
-
 if __name__ == "__main__":
-    env = BipedalWalker(render_mode="human", noise=0.5, hardcore=False, slope=0.2, load_terrain=None)
-    env.reset()
-    env.render()
-    steps = 0
-    total_reward = 0
-    a = np.array([0.0, 0.0, 0.0, 0.0])
-    STAY_ON_ONE_LEG, PUT_OTHER_DOWN, PUSH_OFF = 1, 2, 3
-    SPEED = 0.29  # Will fall forward on higher speed
-    state = STAY_ON_ONE_LEG
-    moving_leg = 0
-    supporting_leg = 1 - moving_leg
-    SUPPORT_KNEE_ANGLE = +0.1
-    supporting_knee_angle = SUPPORT_KNEE_ANGLE
-    while True:
-        s, r, terminated, truncated, info = env.step(a)
-        total_reward += r
-        # if steps % 20 == 0 or terminated or truncated:
-        #     print("\naction " + str([f"{x:+0.2f}" for x in a]))
-            # print(f"step {steps} total_reward {total_reward:+0.2f}")
-        #     print("hull " + str([f"{x:+0.2f}" for x in s[0:4]]))
-        #     print("leg0 " + str([f"{x:+0.2f}" for x in s[4:9]]))
-        #     print("leg1 " + str([f"{x:+0.2f}" for x in s[9:14]]))
-        steps += 1
 
-        contact0 = s[8]
-        contact1 = s[13]
-        moving_s_base = 4 + 5 * moving_leg
-        supporting_s_base = 4 + 5 * supporting_leg
+    env = BipedalWalker(render_mode="human")
+    max_steps = 1600
 
-        hip_targ = [None, None]  # -0.8 .. +1.1
-        knee_targ = [None, None]  # -0.6 .. +0.9
-        hip_todo = [0.0, 0.0]
-        knee_todo = [0.0, 0.0]
+    net = NeuralNetwork(24, 20, 4)
 
-        if state == STAY_ON_ONE_LEG:
-            hip_targ[moving_leg] = 1.1
-            knee_targ[moving_leg] = -0.6
-            supporting_knee_angle += 0.03
-            if s[2] > SPEED:
-                supporting_knee_angle += 0.03
-            supporting_knee_angle = min(supporting_knee_angle, SUPPORT_KNEE_ANGLE)
-            knee_targ[supporting_leg] = supporting_knee_angle
-            if s[supporting_s_base + 0] < 0.10:  # supporting leg is behind
-                state = PUT_OTHER_DOWN
-        if state == PUT_OTHER_DOWN:
-            hip_targ[moving_leg] = +0.1
-            knee_targ[moving_leg] = SUPPORT_KNEE_ANGLE
-            knee_targ[supporting_leg] = supporting_knee_angle
-            if s[moving_s_base + 4]:
-                state = PUSH_OFF
-                supporting_knee_angle = min(s[moving_s_base + 2], SUPPORT_KNEE_ANGLE)
-        if state == PUSH_OFF:
-            knee_targ[moving_leg] = supporting_knee_angle
-            knee_targ[supporting_leg] = +1.0
-            if s[supporting_s_base + 2] > 0.88 or s[2] > 1.2 * SPEED:
-                state = STAY_ON_ONE_LEG
-                moving_leg = 1 - moving_leg
-                supporting_leg = 1 - moving_leg
+    load_path = "generalist-controllers-terrain\XNES_Biped\Results_Biped (2).pt"
+    weights = torch.load(load_path)
+    fill_parameters(net, weights)
 
-        if hip_targ[0]:
-            hip_todo[0] = 0.9 * (hip_targ[0] - s[4]) - 0.25 * s[5]
-        if hip_targ[1]:
-            hip_todo[1] = 0.9 * (hip_targ[1] - s[9]) - 0.25 * s[10]
-        if knee_targ[0]:
-            knee_todo[0] = 4.0 * (knee_targ[0] - s[6]) - 0.25 * s[7]
-        if knee_targ[1]:
-            knee_todo[1] = 4.0 * (knee_targ[1] - s[11]) - 0.25 * s[12]
+    env.noise, env.slope = 0.3, 0.5
+    obs, _ = env.reset()
+    done = False
+    score = 0
+    s = 0
 
-        hip_todo[0] -= 0.9 * (0 - s[0]) - 1.5 * s[1]  # PID to keep head strait
-        hip_todo[1] -= 0.9 * (0 - s[0]) - 1.5 * s[1]
-        knee_todo[0] -= 15.0 * s[3]  # vertical speed, to damp oscillations
-        knee_todo[1] -= 15.0 * s[3]
+    while not done:
+        action = net.forward(obs).detach().numpy()
 
-        a[0] = hip_todo[0]
-        a[1] = knee_todo[0]
-        a[2] = hip_todo[1]
-        a[3] = knee_todo[1]
-        a = np.clip(0.5 * a, -1.0, 1.0)
+        obs, reward, terminated, truncated, _ = env.step(action)
+
+        score += reward     
 
         env.render()
 
-        if terminated or truncated:
-            # print(env.terrain)
+        # If the space bar is pressed, we skip to the next terrain simulation.
+        if kb.is_pressed('space'):
+            break
+        
+        if s > max_steps:
             break
 
-        if kb.is_pressed("q"):
-            # print(type(env.terrain[0]))
-            break
+        s += 1
+        
+        done = terminated or truncated
 
-    
+
+    print(f"Score: {round(score, 3)}, Noise: {env.noise}, Slope: {env.slope}")
