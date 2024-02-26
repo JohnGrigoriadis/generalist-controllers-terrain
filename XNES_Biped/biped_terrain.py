@@ -47,8 +47,8 @@ HULL_POLY = [(-30, +9), (+6, +9), (+34, +1), (+34, -8), (-30, -8)]
 LEG_DOWN = -8 / SCALE
 LEG_W, LEG_H = 8 / SCALE, 34 / SCALE # 8, 34
 
-VIEWPORT_W = 800
-VIEWPORT_H = 400*2
+VIEWPORT_W = 600
+VIEWPORT_H = 400
 
 TERRAIN_STEP = 14 / SCALE
 TERRAIN_LENGTH = 200  # in steps
@@ -789,7 +789,8 @@ class BipedalWalker(gym.Env, EzPickle):
 
         if self.render_mode == "human":
             assert self.screen is not None
-            self.screen.blit(self.surf, (-self.scroll * SCALE, 0))
+            pos = self.hull.position
+            self.screen.blit(self.surf, (-self.scroll * SCALE, pos.y * SCALE - VIEWPORT_H/2))
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
@@ -814,11 +815,11 @@ if __name__ == "__main__":
 
     net = NeuralNetwork(24, 20, 4)
 
-    load_path = "generalist-controllers-terrain\XNES_Biped\Results_Biped (2).pt"
+    load_path = "generalist-controllers-terrain\XNES_Biped\Results_Biped 600.pt"
     weights = torch.load(load_path)
     fill_parameters(net, weights)
 
-    env.noise, env.slope = 0.3, 0.5
+    env.noise, env.slope = 0.0, -0.3
     obs, _ = env.reset()
     done = False
     score = 0
@@ -837,12 +838,10 @@ if __name__ == "__main__":
         if kb.is_pressed('space'):
             break
         
+        s += 1
         if s > max_steps:
             break
 
-        s += 1
-        
         done = terminated or truncated
-
 
     print(f"Score: {round(score, 3)}, Noise: {env.noise}, Slope: {env.slope}")
