@@ -191,20 +191,21 @@ class EVO():
                 good, bad, reached_goal = self.split(searcher.status["best"].values)
                 
                 self.terrain_params = bad
+                self.ter_num = 0
                 self.good_terrains.extend(good)
+
+
+                # I will probably have to initialize the searcher for the new set of terrains
+                
+                searcher = XNES(
+                    problem,
+                    stdev_init = sigma,
+                    popsize = pSize
+                        )
 
                 if reached_goal:
                     save_path = "generalist-controllers-terrain/XNES_Biped/XNES_BipedWalker_250.pt"
                     torch.save(searcher.status["best"].values, save_path)  
-
-            # I will probably have to initialize the searcher for the new set of terrains
-            
-            searcher = XNES(
-                problem,
-                stdev_init = sigma,
-                popsize = pSize
-                    )
-
 
                 
         return searcher
