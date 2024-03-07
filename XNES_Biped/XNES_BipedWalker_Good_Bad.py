@@ -79,7 +79,7 @@ def fill_parameters(net: nn.Module, vector: torch.Tensor):
 
     if address != len(vector):
         raise IndexError("The parameter vector is larger than expected")
-    
+
 
 class EVO():
     '''
@@ -167,11 +167,11 @@ class EVO():
 
         for gen in range(generations):
             searcher.step()
-            fitness = searcher.status["best"].evals
+            fitness = searcher.status["best"].evals[0].item()
 
 
             if gen % 25 == 0:
-                print(f"Generation: {gen}, Best Fitness: {fitness[0].item():3f}")
+                print(f"Generation: {gen}, Best Fitness: {fitness:3f}")
 
             self.ter_num +=1
             if self.ter_num == len(self.terrain_params):
@@ -186,17 +186,17 @@ class EVO():
             #     save = False
 
             # self.ter_reward[self.ter_num].append(fitness[0].item())
-                
-            if fitness[0].item() >= self.max_fitness and (gen % 10) == 0:
+
+            if fitness >= self.max_fitness and (gen % 10) == 0:
                 good, bad, reached_goal = self.split(searcher.status["best"].values)
-                
-                self.terrain_params = bad
-                self.ter_num = 0
-                self.good_terrains.extend(good)
+
+                self.terrain_params = bad # make the terrains only the bad ones for generalization
+                self.ter_num = 0 # reset ter count no avoid out of range errors
+                self.good_terrains.extend(good) # not sure why i do this, but sure.
 
 
-                # I will probably have to initialize the searcher for the new set of terrains
-                
+                # I will  initialize a new searcher for the new set of terrains.
+
                 searcher = XNES(
                     problem,
                     stdev_init = sigma,
@@ -204,12 +204,14 @@ class EVO():
                         )
 
                 if reached_goal:
-                    save_path = "generalist-controllers-terrain/XNES_Biped/XNES_BipedWalker_250.pt"
-                    torch.save(searcher.status["best"].values, save_path)  
+                    count += 1 
+                    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment Results/XNES_BipedWalker_Split_{count}.pt"
+                    torch.save(searcher.status["best"].values, save_path)
+                    self.terrain_params = generate_terrain([0.0, 1.1], [0.0, 1.1], 0.1)
 
-                
+
         return searcher
-    
+
     def split(self, best):
         """
         Test the best individual on all terrains and split them into Good and Bad terrains.
@@ -218,15 +220,19 @@ class EVO():
         If the best individual reaches the target fitness on 85% of the terrains, the initial goal is reached,
         but the evolution continues to hopefully find a better generalist controller.
         """
-        
+
         # Fill in the parameters of the best individual
         fill_parameters(self.net, best)
 
-        max_steps = 1600
-        good, bad = [], []
+        max_steps = 1600 
         s = 0
 
+        reached_goal = False
+
+        good, bad = [], []
         for i, param in enumerate(self.terrain_params):
+
+          # since I have a set seed for every environment, reward will be the same. So 1 test is enough to get the reward.
 
             self.env.noise, self.env.slope = param #terrain_params[38]
 
@@ -249,17 +255,19 @@ class EVO():
 
                 done = terminated or truncated
 
-            if score >= 250:
+            if score >= 200: # Be a bit more lenient with accepting good and bad terrains. 
                 good.append(param)
             else:
                 bad.append(param)
             # print(f"Episode: {param} Score: {score}, Terrain: {i}")
-                
+
         if len(good) > int(len(self.terrain_params) * 0.85):
-            reached_goal = True
+          reached_goal = True
+
 
         self.env.close()
-        print(f"Good terrains: {len(good)}, Bad terrains : {len(bad)}")
+
+        print(f"  Evaluation: Good terrains: {len(good)}, Bad terrains : {len(bad)}")
 
         return good, bad, reached_goal
 
@@ -277,13 +285,13 @@ def experiment():
     net = NeuralNetwork(state_size, hidden_size, action_size)
 
     noise_range = data["noise"] # [0.0, 1.1]  I want to include 1.0
-    slope_range = data["slope"]#[-0.5, 0.5] Slope 0.5 is already pretty steep
+    slope_range = data["slope"] #[-0.5, 0.5] Slope 0.5 is already pretty steep
     step_size = data["step_size"] # 0.1
 
     terrain_params = generate_terrain(noise_range, slope_range, step_size) # 100 terrains at the moment with the current step size
 
     sigma = data["stdev_init"]
-    # At the moment the population is chosen automatically by XNES (23), but I can set it manually
+    # The population can be chosen automatically by XNES (23), but I set it manually to 30.
     pSize = data["population"]
     generations = data["generations"]
     target_fitness = data["targetFitness"]
@@ -294,7 +302,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/{data['filename']}.pt"
+    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment Results/{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
