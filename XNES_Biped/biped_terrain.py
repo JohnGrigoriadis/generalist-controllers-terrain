@@ -781,8 +781,8 @@ if __name__ == "__main__":
     net = NeuralNetwork(24, 20, 4)
 
     load_path = "Results_Biped.pt"
-    # weights = torch.load(load_path)
-    # fill_parameters(net, weights)
+    weights = torch.load(load_path)
+    fill_parameters(net, weights)
     env.noise, env.slope = 0.0, -0.3
     obs, _ = env.reset()
     done = False
