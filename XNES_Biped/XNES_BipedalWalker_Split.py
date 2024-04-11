@@ -112,13 +112,14 @@ class EVO():
             network_eval_func=self.evaluation_function,
             network=NeuralNetwork(self.state_size, 20, self.action_size).eval(),
             num_actors= 0, # Number of parallel evaluations.
-            initial_bounds=(-0.00001, 0.00001)
+            initial_bounds=(-0.00001, 0.00001),
+            device = self.device
                 )
 
         searcher = XNES(
             problem,
             stdev_init = sigma,
-            popsize = pSize
+            # popsize = pSize
                 )
         
         print("")
@@ -158,14 +159,15 @@ class EVO():
                     network_eval_func=self.evaluation_function,
                     network=net.eval(), # Hopefully the initial weights are the same as the best individual
                     num_actors= 0, # Number of parallel evaluations.
-                    initial_bounds=(-0.00001, 0.00001)
+                    initial_bounds=(-0.00001, 0.00001),
+                    device = self.device
                         )
 
                 # I will  initialize a new searcher for the new set of terrains.
                 searcher = XNES(
                     new_problem,
                     stdev_init = sigma,
-                    popsize = pSize
+                    # popsize = pSize
                         )
 
                 
@@ -370,6 +372,6 @@ if __name__ == "__main__":
 
     # print(searcher.status["best"].values, searcher.status["best"].evals)
 
-    # if generalists != []:
+
     for i, generalist in enumerate(generalists):
         torch.save(generalist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/generalist_0_{i}.pt")
