@@ -150,6 +150,7 @@ class EVO():
 
                 self.terrain_params = bad.copy()  # make the terrains only the bad ones + 1 good for generalization
                 self.gen_terrains.append(good) # Save the terrains in an adjacent list for later merging
+                self.generalists.append(searcher.status["best"].values) # Save the generalist controller
 
                 net = NeuralNetwork(24, 20, 4)
                 fill_parameters(net, searcher.status["best"].values)
@@ -172,6 +173,7 @@ class EVO():
 
                 
                 if len(bad) == 0:
+                    print("")
                     print("No terrains left, stopping the evolution.")
                     print(f"Generation: {gen}, Final Best Fitness: {fitness:.3f}, Avg Fitness: {avg_fitness:.3f}")
                     break
@@ -179,6 +181,7 @@ class EVO():
         if "bad" in locals():
             if len(bad) > 0:
                 # self.bad_terrains = bad.copy()
+                print("")
                 print(f"Terrains that could not be solved: {bad}")
 
         self.merge_generalists(self.generalists)
