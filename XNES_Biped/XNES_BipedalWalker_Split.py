@@ -68,9 +68,6 @@ class EVO():
 
         self.ter_num = 0
 
-        self.good_terrains = []
-        self.bad_terrains = []
-
         self.generalists = []
         self.gen_terrains = []
 
@@ -180,7 +177,6 @@ class EVO():
         
         if "bad" in locals():
             if len(bad) > 0:
-                # self.bad_terrains = bad.copy()
                 print("")
                 print(f"Terrains that could not be solved: {bad}")
 
@@ -311,7 +307,12 @@ class EVO():
             
             for i, generalist in enumerate(generalists):
                 fill_parameters(self.net, generalist)
-                controller_fit = Parallel(n_jobs=4)(delayed(self.evaluation_function)(self.net, params) for params in self.keep_terrains)
+
+                controller_fit = []
+                for num in range(len(self.keep_terrains)):
+                    self.ter_num = num
+                    controller_fit.append(self.evaluation_function(self.net))
+
                 gen_matrix.append(controller_fit)
 
             # Select the best generalist controller for each terrain, with no overlap
