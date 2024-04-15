@@ -1,16 +1,16 @@
 
 from biped_morphology import BipedalWalker
-from XNES_Biped.network import NeuralNetwork, fill_parameters
+from network import NeuralNetwork, fill_parameters
 
 import numpy as np
 import time
 import json
-
+import pickle
 import torch
 
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
-import json
+from joblib import Parallel, delayed
 
 def generate_morphologies(parameter1_range, parameter2_range, step_sizes):
     """
@@ -50,6 +50,8 @@ class EVO():
         self.net = net
         self.morph_params = morph_params
 
+        self.keep_morphs = morph_params.copy()
+
         self.max_fitness = max_fitness
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -64,14 +66,14 @@ class EVO():
 
         self.morph_num  = 0
 
-        self.good_terrains = []
-        self.bad_terrains = []
-
         self.generalists = []
+        self.gen_morphs = []
 
     def evaluation_function(self, net: NeuralNetwork):
 
-        self.env.envs = self.morph_params[self.morph_num] # Change the terrain in each generation
+        self.env.LEG_W = self.morph_params[self.morph_num][0] / 30.0
+        self.env.LEG_H = self.morph_params[self.morph_num][1] / 30.0
+        self.env.LEG_DOWN =  -(self.env.LEG_W) / 30.0
 
         obs, _ = self.env.reset()
 
@@ -141,6 +143,8 @@ class EVO():
                 count_split += 1
 
                 self.morph_params = bad.copy()  # make the terrains only the bad ones + 1 good for generalization
+                self.gen_morphs.append(good)
+                self.generalists.append(searcher.status["best"].values)
 
                 net = NeuralNetwork(24, 20, 4)
                 fill_parameters(net, searcher.status["best"].values)
@@ -168,9 +172,9 @@ class EVO():
         
         if "bad" in locals():
             if len(bad) > 0:
-                # self.bad_terrains = bad.copy()
                 print(f"Terrains that could not be solved: {bad}")
 
+        self.merge_generalists(self.generalists)
 
         return searcher, self.generalists
 
@@ -232,6 +236,63 @@ class EVO():
 
         return good, bad, reached_goal, np.mean(avg_score)
     
+    def merge_generalists(self, generalists) -> None:
+        """
+        Evaluate the generalists on all terrains and select the best generalist controller
+        for each terrain.
+
+        Params:
+        - generalists: List of generalist controllers
+        - gen_terrians: List of terrains for each generalist controller
+        """
+
+        if len(generalists) == 0:
+            print("No generalists to merge, stopping the process.")
+            
+        
+        elif len(generalists) == 1:
+            print("Only one generalist, merging not possible, saving it to file.")
+            filepath = "generalist-controllers-terrain\XNES_Biped\Experiment_Results\Generalists\generalists_dict.pkl"
+
+            # Save the dictionary to a file
+            with open(filepath, 'wb') as f:
+                pickle.dump({0: self.gen_morphs[0]}, f)
+
+        else:
+
+            # Create a matrix with all fitnesses for each generalist on each terrain
+            gen_matrix = []
+            
+            for j, generalist in enumerate(generalists):
+                fill_parameters(self.net, generalist)
+                
+                controller_fit = []
+                for num in range(len(self.keep_morphs)):
+                    self.morph_num = num
+                    controller_fit.append(self.evaluation_function(self.net))
+
+                gen_matrix.append(controller_fit)
+
+            # Select the best generalist controller for each terrain, with no overlap
+            generalists_new = {i: [] for i in range(len(generalists))}
+            # ter_indeces = [i for i in range(len(gen_terrains[0]))]
+
+            gen_matrix_T = np.array(gen_matrix).T
+            for ter_idx, fits in enumerate(gen_matrix_T):
+
+                best_fit = max(list(fits))
+                contr = list(fits).index(best_fit)
+                generalists_new[contr].append(self.keep_morphs[ter_idx])
+            
+
+            filepath = "generalist-controllers-terrain\XNES_Biped\Experiment_Results\Generalists\generalist_morph_dict.pkl"
+
+            # Save the dictionary to a file
+            with open(filepath, 'wb') as f:
+                pickle.dump(generalists_new, f)
+
+            print("Merging complete, generalists saved to file.")
+
 
 def experiment():
 
@@ -241,7 +302,7 @@ def experiment():
 
     start = time.time()
 
-    env = BipedalWalker(envs=[8, 34]) # Hardcore is off by default
+    env = BipedalWalker(envs=[8, 34]) # Initialize the environment with the default morphology
 
     state_size, hidden_size, action_size = data["NN-struc"]
     net = NeuralNetwork(state_size, hidden_size, action_size)
@@ -254,7 +315,7 @@ def experiment():
 
     sigma = data["stdev_init"]
     pSize = data["population"]  # At the moment the population is set manually at 30, but can be set chosen automatically by XNES (23)
-    generations = 5 #data["generations"]
+    generations = 1000  #data["generations"]
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, morph_params, target_fitness)
@@ -263,8 +324,8 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/{data['filename']}.pt"
-    torch.save(searcher.status["best"].values, save_path)
+    # save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/{data['filename']}_morph.pt"
+    # torch.save(searcher.status["best"].values, save_path)
 
     return searcher, generalists
 
