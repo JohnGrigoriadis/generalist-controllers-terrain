@@ -50,7 +50,8 @@ class EVO():
     def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params: list, max_fitness = 250):
         self.env = env
         self.net = net
-        self.terrain_params = self.select_terrains(terrain_params)
+        # self.terrain_params = self.select_terrains(terrain_params)
+        self.terrain_params = terrain_params
 
         self.keep_terrains = self.terrain_params.copy()
 
@@ -309,6 +310,8 @@ class EVO():
                 fill_parameters(self.net, generalist)
 
                 controller_fit = []
+                self.terrain_params = self.keep_terrains.copy()
+                
                 for num in range(len(self.keep_terrains)):
                     self.ter_num = num
                     controller_fit.append(self.evaluation_function(self.net))
