@@ -14,7 +14,7 @@ from joblib import Parallel, delayed
 
 def generate_morphologies(parameter1_range, parameter2_range, step_sizes):
     """
-    The terrains are generated in a way that the slope changes every generation,
+    The morphologies are generated in a way that the slope changes every generation,
     once all slopes are visited the noise is increased.
 
     This makes it so the task starts a bit easier in the beginning and it gets
@@ -33,16 +33,16 @@ def generate_morphologies(parameter1_range, parameter2_range, step_sizes):
 class EVO():
     '''
     With the normal environment (noise=0.1, slope=0.0), the total_reward goal is 300,
-    but since the varying terrains make the environment harder, I will set the goal to 250.
+    but since the varying morphologies make the environment harder, I will set the goal to 250.
 
     Parameters:
     - env: BipedalWalker environment
     - net: NeuralNetwork
-    - morph_params: List of terrain parameters (noise, slope)
+    - morph_params: List of morphology parameters (noise, slope)
     - max_fitness: The target fitness the controller should achieve
 
-    This version of the algorithm holds the reward of the agent for each terrain and split them into Good and Bad.
-    Once the target reward is reached *for any terrain*, the evolution is continued in only the Bad terrains.
+    This version of the algorithm holds the reward of the agent for each morphology and split them into Good and Bad.
+    Once the target reward is reached *for any morphology*, the evolution is continued in only the Bad morphology.
     '''
 
     def __init__(self, env : BipedalWalker, net : NeuralNetwork, morph_params: list, max_fitness = 250):
@@ -142,7 +142,7 @@ class EVO():
                 torch.save(searcher.status["best"].values, save_path)
                 count_split += 1
 
-                self.morph_params = bad.copy()  # make the terrains only the bad ones + 1 good for generalization
+                self.morph_params = bad.copy()  # make the morphologies only the bad ones + 1 good for generalization
                 self.gen_morphs.append(good)
                 self.generalists.append(searcher.status["best"].values)
 
@@ -157,7 +157,7 @@ class EVO():
                     initial_bounds=(-0.00001, 0.00001)
                         )
 
-                # I will  initialize a new searcher for the new set of terrains.
+                # I will  initialize a new searcher for the new set of morphologies.
                 searcher = XNES(
                     new_problem,
                     stdev_init = sigma,
@@ -166,13 +166,13 @@ class EVO():
 
                 
                 if len(bad) == 0:
-                    print("No terrains left, stopping the evolution.")
+                    print("No morphologies left, stopping the evolution.")
                     print(f"Generation: {gen}, Final Best Fitness: {fitness:.3f}, Avg Fitness: {avg_fitness:.3f}")
                     break
         
         if "bad" in locals():
             if len(bad) > 0:
-                print(f"Terrains that could not be solved: {bad}")
+                print(f"Morphologies that could not be solved: {bad}")
 
         self.merge_generalists(self.generalists)
 
@@ -180,10 +180,10 @@ class EVO():
 
     def split(self, best):
         """
-        Test the best individual on all terrains and split them into Good and Bad terrains.
-        Then continue the evolution on the Bad terrains to encourage generalization.
+        Test the best individual on all morphologies and split them into Good and Bad morphologies.
+        Then continue the evolution on the Bad morphologies to encourage generalization.
 
-        If the best individual reaches the target fitness on 85% of the terrains, the initial goal is reached,
+        If the best individual reaches the target fitness on 85% of the morphologies, the initial goal is reached,
         but the evolution continues to hopefully find a better generalist controller.
         """
 
@@ -219,7 +219,7 @@ class EVO():
 
                 done = terminated or truncated
 
-            if score >= self.max_fitness: # Be a bit more lenient with accepting good and bad terrains.
+            if score >= self.max_fitness: # Be a bit more lenient with accepting good and bad morphologies.
                 good.append(param)
             else:
                 bad.append(param)
@@ -232,18 +232,18 @@ class EVO():
 
         self.env.close()
 
-        print(f"  Evaluation: Good terrains: {len(good)}, Bad terrains : {len(bad)}")
+        print(f"  Evaluation: Good morphologies: {len(good)}, Bad morphologies : {len(bad)}")
 
         return good, bad, reached_goal, np.mean(avg_score)
     
     def merge_generalists(self, generalists) -> None:
         """
-        Evaluate the generalists on all terrains and select the best generalist controller
-        for each terrain.
+        Evaluate the generalists on all morphologies and select the best generalist controller
+        for each morphology.
 
         Params:
         - generalists: List of generalist controllers
-        - gen_terrians: List of terrains for each generalist controller
+        - gen_terrians: List of morphologies for each generalist controller
         """
 
         if len(generalists) == 0:
@@ -260,20 +260,22 @@ class EVO():
 
         else:
 
-            # Create a matrix with all fitnesses for each generalist on each terrain
+            # Create a matrix with all fitnesses for each generalist on each morphology
             gen_matrix = []
             
-            for j, generalist in enumerate(generalists):
+            for _, generalist in enumerate(generalists):
                 fill_parameters(self.net, generalist)
                 
                 controller_fit = []
+                self.morph_params = self.keep_morphs.copy()
                 for num in range(len(self.keep_morphs)):
+
                     self.morph_num = num
                     controller_fit.append(self.evaluation_function(self.net))
 
                 gen_matrix.append(controller_fit)
 
-            # Select the best generalist controller for each terrain, with no overlap
+            # Select the best generalist controller for each morphology, with no overlap
             generalists_new = {i: [] for i in range(len(generalists))}
             # ter_indeces = [i for i in range(len(gen_terrains[0]))]
 
@@ -311,7 +313,7 @@ def experiment():
     leg_length = [26, 41] 
     step_size = [1, 2]
 
-    morph_params = generate_morphologies(leg_width, leg_length, step_size) # 64 terrains with the current bounds and step size
+    morph_params = generate_morphologies(leg_width, leg_length, step_size) # 64 morphologies with the current bounds and step size
 
     sigma = data["stdev_init"]
     pSize = data["population"]  # At the moment the population is set manually at 30, but can be set chosen automatically by XNES (23)
