@@ -179,7 +179,7 @@ class EVO():
         if "bad" in locals():
             if len(bad) > 0:
                 print("")
-                print(f"Terrains that could not be solved: {bad}")
+                print(f"{len(bad)} morphologies could not be solved: {bad}")
 
         self.merge_generalists(self.generalists)
 
@@ -191,7 +191,7 @@ class EVO():
         Then continue the evolution on the Bad terrains to encourage generalization.
 
         If the best individual reaches the target fitness on 85% of the terrains, the initial goal is reached,
-        but the evolution continues to hopefully find a better generalist controller.
+        but the evolution continues to hopefully find a better generalist controller. - NOT USED HERE
         """
 
         # Fill in the parameters of the best individual
@@ -311,7 +311,7 @@ class EVO():
 
                 controller_fit = []
                 self.terrain_params = self.keep_terrains.copy()
-                
+
                 for num in range(len(self.keep_terrains)):
                     self.ter_num = num
                     controller_fit.append(self.evaluation_function(self.net))
