@@ -107,7 +107,7 @@ class EVO():
         problem = NEProblem(
             objective_sense="max",
             network_eval_func=self.evaluation_function,
-            network=NeuralNetwork(self.state_size, 20, self.action_size).eval(),
+            network=NeuralNetwork(self.state_size, 20, self.action_size),
             num_actors= 0, # Number of parallel evaluations.
             initial_bounds=(-0.00001, 0.00001)
                 )
@@ -147,12 +147,13 @@ class EVO():
                 self.generalists.append(searcher.status["best"].values)
 
                 net = NeuralNetwork(24, 20, 4)
-                fill_parameters(net, searcher.status["best"].values)
+                best_individual = searcher.status["best"].values
+                fill_parameters(net, best_individual)
 
                 new_problem = NEProblem(
                     objective_sense="max",
                     network_eval_func=self.evaluation_function,
-                    network=net.eval(), # Hopefully the initial weights are the same as the best individual
+                    network=net, # Hopefully the initial weights are the same as the best individual
                     num_actors= 0, # Number of parallel evaluations.
                     initial_bounds=(-0.00001, 0.00001)
                         )
