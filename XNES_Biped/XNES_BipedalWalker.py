@@ -3,35 +3,36 @@ from biped_terrain import BipedalWalker
 from network import NeuralNetwork
 
 import numpy as np
-import torch
 import time
 import json
 
+import torch
+
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
-        
+
 # Generate terrains to test the generalist controller on
 def generate_terrain(noise_range, slope_range, step_size):
     """
-        The terrains are shuffled in a way that the slope changes every generation, 
+        The terrains are shuffled in a way that the slope changes every generation,
         once all slopes are visited the noise is increased.
 
-        This makes it so the task starts a bit easier in the beginning and it gets 
+        This makes it so the task starts a bit easier in the beginning and it gets
         harder as the noise level increases.
     """
-        
+
     noise_values = np.arange(noise_range[0], noise_range[1], step_size)
     slope_values = np.arange(slope_range[0], slope_range[1], step_size)
 
     terrains = np.array(np.meshgrid(noise_values, slope_values)).T.reshape(-1, 2)
-        
+
     return terrains
 
 class EVO():
     '''
-    With the normal environment (noise=0.1, slope=0.0), the total_reward goal is 300, but since the varying terrains make the environment harder, 
+    With the normal environment (noise=0.1, slope=0.0), the total_reward goal is 300, but since the varying terrains make the environment harder,
     I will set the goal to 250.
-    
+
     Parameters:
     - env: BipedalWalker environment
     - net: NeuralNetwork
@@ -49,8 +50,8 @@ class EVO():
 
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.shape[0]
-        
-        self.ter_num = 0
+
+        self.ter_num = 38
 
     def evaluation_function(self, net: NeuralNetwork):
 
@@ -71,55 +72,54 @@ class EVO():
 
             s += 1
             total_reward += reward
-            
+
             done = terminated or truncated
 
             if s > nStep:
                 break
 
         self.env.close()
-        
-        return total_reward 
+
+        return total_reward
 
     def run(self, generations = 1000, pSize = 25, sigma = 0.1):
 
         print("Running EVO")
 
         problem = NEProblem(
-            objective_sense="max",  
+            objective_sense="max",
             network_eval_func= self.evaluation_function,
-            network=NeuralNetwork(24, 20, 4),
+            network=NeuralNetwork(24, 20, 4).eval(),
             num_actors= 0, # Number of parallel evaluations.
             initial_bounds=(-0.00001, 0.00001)
                 )
-            
+
         searcher = XNES(
             problem,
             stdev_init = sigma,
-            popsize = pSize  
+            popsize = pSize
                 )
         print(f"Population: {searcher._popsize}, Generations: {generations}")
+        print("")
 
-        save = True
+        # save = True
 
         for gen in range(generations):
             searcher.step()
-            fitness = searcher.status["best"].evals 
+            fitness = fitness = searcher.status["best"].evals[0].item()
 
-            if gen % 100 == 0:
-                print(f"Generation: {gen}, Best Fitness: {round(fitness[0].item(), 3)}")
+            print(f"Generation: {gen}, Best Fitness: {fitness:.3f}")
 
-            self.ter_num +=1
-            if self.ter_num == len(self.terrain_params):
-                self.ter_num = 0
-            
-            # Save the first individual that reaches a fitness of 250 
+            # Replace if statement with modulo calculation
+            self.ter_num = (self.ter_num + 1) % len(self.terrain_params)
+
+            # Save the first individual that reaches a fitness of 250
             # More or less a fail-safe to keep at least one good individual, in case the evolution fails after a certain point.
-            if fitness[0].item() >= self.max_fitness and save:
-                save_path = "generalist-controllers-terrain\XNES_Biped\XNES_BipedWalker_250.pt"
-                torch.save(searcher.status["best"].values, save_path)
-                save = False
-                
+            # if fitness[0].item() >= self.max_fitness and save:
+            #     save_path = "generalist-controllers-terrain/XNES_Biped/XNES_BipedWalker_250.pt"
+            #     torch.save(searcher.status["best"].values, save_path)
+            #     save = False
+
         return searcher
 
 
@@ -132,29 +132,29 @@ def experiment():
     start = time.time()
 
     env = BipedalWalker()
-    
+
     state_size, hidden_size, action_size = data["NN-struc"]
     net = NeuralNetwork(state_size, hidden_size, action_size)
 
-    noise_range = data["noise"] # [0.0, 1.1]  I want to include 1.0 
+    noise_range = data["noise"] # [0.0, 1.1]  I want to include 1.0
     slope_range = data["slope"]#[-0.5, 0.5] Slope 0.5 is already pretty steep
     step_size = data["step_size"] # 0.1
 
     terrain_params = generate_terrain(noise_range, slope_range, step_size) # 100 terrains at the moment with the current step size
-    
+
     sigma = data["stdev_init"]
-    # At the moment the population is chosen automatically by XNES (23), but I can set it manually 
+    # At the moment the population is chosen automatically by XNES (23), but I can set it manually
     pSize = data["population"]
     generations = data["generations"]
     target_fitness = data["targetFitness"]
-    
+
     evo = EVO(env, net, terrain_params, target_fitness)
     searcher = evo.run(generations = generations, pSize = pSize, sigma = sigma)
-    
+
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain\XNES_Biped\{data['filename']}.pt"
+    save_path = f"generalist-controllers-terrain/XNES_Biped/{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
