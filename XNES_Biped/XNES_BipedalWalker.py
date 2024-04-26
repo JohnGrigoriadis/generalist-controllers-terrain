@@ -161,7 +161,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/{data['filename']}.pt"
+    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Result/{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
