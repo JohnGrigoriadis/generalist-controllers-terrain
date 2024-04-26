@@ -5,6 +5,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+from evotorch.neuroevolution import NEProblem
+
+
 # Neural network
 class NeuralNetwork(nn.Module):
     """
@@ -74,3 +77,4 @@ def parameterize_net(network, parameters: torch.Tensor, network_device="cpu") ->
 
     # Return the network
     return network
+    
