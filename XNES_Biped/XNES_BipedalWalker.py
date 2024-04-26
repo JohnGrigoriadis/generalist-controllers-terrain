@@ -51,7 +51,11 @@ class EVO():
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.shape[0]
 
-        self.ter_num = 38
+        self.ter_num = 0
+
+        self.max_evals = 30 #115_000
+        self.evals = 0
+
 
     def evaluation_function(self, net: NeuralNetwork):
 
@@ -79,6 +83,7 @@ class EVO():
                 break
 
         self.env.close()
+        self.evals += 1
 
         return total_reward
 
@@ -99,7 +104,7 @@ class EVO():
             stdev_init = sigma,
             popsize = pSize
                 )
-        print(f"Population: {searcher._popsize}, Generations: {generations}")
+        print(f"Population: {searcher._popsize}, Generations: {generations}, " )
         print("")
 
         # save = True
@@ -113,12 +118,14 @@ class EVO():
             # Replace if statement with modulo calculation
             self.ter_num = (self.ter_num + 1) % len(self.terrain_params)
 
-            # Save the first individual that reaches a fitness of 250
-            # More or less a fail-safe to keep at least one good individual, in case the evolution fails after a certain point.
-            # if fitness[0].item() >= self.max_fitness and save:
-            #     save_path = "generalist-controllers-terrain/XNES_Biped/XNES_BipedWalker_250.pt"
-            #     torch.save(searcher.status["best"].values, save_path)
-            #     save = False
+
+            if fitness >= -10: # Different that the max_fitness of the other experiments
+                print("Target fitness reached.\n   Exiting...\n")
+                break
+
+            if self.evals > self.max_evals:
+                print("Max evaluations reached.\n   Exiting...\n")
+                break
 
         return searcher
 
