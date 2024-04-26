@@ -72,6 +72,9 @@ class EVO():
         self.generalists = []
         self.gen_terrains = []
 
+        self.max_evals = 5 #115_000
+        self.evals = 0
+
     def evaluation_function(self, net: NeuralNetwork):
 
         self.env.noise, self.env.slope = self.terrain_params[self.ter_num] # Change the terrain in each generation
@@ -98,6 +101,7 @@ class EVO():
                 break
 
         self.env.close()
+        self.evals += 1
 
         return total_reward
 
@@ -121,11 +125,9 @@ class EVO():
                 )
         
         print("")
-        print(f"Population: {searcher._popsize}, Generations: {generations}")
+        print(f"Population: {searcher._popsize}, Generations: {generations}, self.max_evals: {self.max_evals}")
         print("")
 
-        save = True
-        count = 0
         count_split = 0
 
         for gen in range(generations):
@@ -156,7 +158,7 @@ class EVO():
                 new_problem = NEProblem(
                     objective_sense="max",
                     network_eval_func=self.evaluation_function,
-                    network=net.eval(), # Hopefully the initial weights are the same as the best individual
+                    network=net, # Hopefully the initial weights are the same as the best individual
                     num_actors= 0, # Number of parallel evaluations.
                     initial_bounds=(-0.00001, 0.00001),
                     device = self.device
@@ -175,7 +177,11 @@ class EVO():
                     print("No terrains left, stopping the evolution.")
                     print(f"Generation: {gen}, Final Best Fitness: {fitness:.3f}, Avg Fitness: {avg_fitness:.3f}")
                     break
-        
+
+            if self.evals >= self.max_evals:
+                print("Max evaluations reached.\n   Exiting...")
+                break
+
         if "bad" in locals():
             if len(bad) > 0:
                 print("")
@@ -360,7 +366,7 @@ def experiment():
 
     sigma = data["stdev_init"]
     pSize = data["population"]  # At the moment the population is set manually at 30, but can be set chosen automatically by XNES (23)
-    generations = 500 #data["generations"]
+    generations = 1000 #data["generations"]
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, terrain_params, target_fitness)
@@ -381,4 +387,4 @@ if __name__ == "__main__":
 
 
     for i, generalist in enumerate(generalists):
-        torch.save(generalist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/generalist_0_{i}.pt")
+        torch.save(generalist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/generalist_ter_0_{i}.pt")
