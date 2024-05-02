@@ -142,9 +142,9 @@ class EVO():
                 good, bad, reached_goal, avg_fitness = self.split(searcher.status["best"].values)
 
                 # This is a backup in case the code fails later on
-                save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/XNES_BipedWalker_ens_{count_split}.pt"
-                torch.save(searcher.status["best"].values, save_path)
-                count_split += 1
+                # save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/XNES_BipedWalker_ens_{count_split}.pt"
+                # torch.save(searcher.status["best"].values, save_path)
+                # count_split += 1
 
                 self.morph_params = bad.copy()  # make the morphologies only the bad ones + 1 good for generalization
                 self.gen_morphs.append(good)
@@ -296,7 +296,7 @@ class EVO():
                 generalists_new[contr].append(self.keep_morphs[ter_idx])
             
 
-            filepath = "generalist-controllers-terrain\XNES_Biped\Experiment_Results\Generalists\generalist_morph_dict.pkl"
+            filepath = "XNES_Biped\Experiment_Results\Generalists\generalist_morph_dict.pkl"
 
             # Save the dictionary to a file
             with open(filepath, 'wb') as f:
@@ -308,7 +308,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as file:
+    with open('XNES_Biped/biped_exp.json') as file:
         data = json.load(file)
 
     start = time.time()
@@ -326,7 +326,7 @@ def experiment():
 
     sigma = data["stdev_init"]
     pSize = data["population"]  # At the moment the population is set manually at 30, but can be set chosen automatically by XNES (23)
-    generations = 1000  #data["generations"]
+    generations = data["generations"]
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, morph_params, target_fitness)
@@ -347,4 +347,4 @@ if __name__ == "__main__":
 
     # if generalists != []:
     for i, generalist in enumerate(generalists):
-        torch.save(generalist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/generalist_morph_0_{i}.pt")
+        torch.save(generalist, f"XNES_Biped/Experiment_Results/Generalists/generalist_morph_0_{i}.pt")

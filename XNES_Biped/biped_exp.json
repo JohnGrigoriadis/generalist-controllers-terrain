@@ -5,7 +5,7 @@
     "stdev_init": 0.1,
     "initial_bounds": [-0.00001, 0.00001],
     "population" : 30,
-    "generations": 1000,
+    "generations": 5000,
     "filename": "Results_Biped",
     "//comment": "Parameter1 is the noise level",
     "noise": [0.0, 0.7],
