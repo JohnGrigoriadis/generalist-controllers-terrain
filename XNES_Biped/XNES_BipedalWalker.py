@@ -53,7 +53,7 @@ class EVO():
 
         self.ter_num = 0
 
-        self.max_evals = 30 #115_000
+        self.max_evals = 115_000
         self.evals = 0
 
 
@@ -119,7 +119,7 @@ class EVO():
             self.ter_num = (self.ter_num + 1) % len(self.terrain_params)
 
 
-            if fitness >= -10: # Different that the max_fitness of the other experiments
+            if fitness >= 270: # Different that the max_fitness of the other experiments
                 print("Target fitness reached.\n   Exiting...\n")
                 break
 
@@ -133,7 +133,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as f:
+    with open('XNES_Biped/biped_exp.json') as f:
         data = json.load(f)
 
     start = time.time()
@@ -161,7 +161,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Result/{data['filename']}.pt"
+    save_path = f"XNES_Biped/Experiment_Results/{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
