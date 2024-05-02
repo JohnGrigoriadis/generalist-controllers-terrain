@@ -366,7 +366,7 @@ def experiment():
 
     sigma = data["stdev_init"]
     pSize = data["population"]  # At the moment the population is set manually at 30, but can be set chosen automatically by XNES (23)
-    generations = 1000 #data["generations"]
+    generations = data["generations"]
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, terrain_params, target_fitness)
