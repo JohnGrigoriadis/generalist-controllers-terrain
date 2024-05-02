@@ -301,7 +301,7 @@ class EVO():
         
         elif len(generalists) == 1:
             print("Only one generalist, merging not possible, saving it to file.")
-            filepath = "generalist-controllers-terrain\XNES_Biped\Experiment_Results\Generalists\generalists_dict.pkl"
+            filepath = "XNES_Biped\Experiment_Results\Generalists\generalists_dict.pkl"
 
             # Save the dictionary to a file
             with open(filepath, 'wb') as f:
@@ -336,7 +336,7 @@ class EVO():
                 generalists_new[contr].append(self.keep_terrains[ter_idx])
             
 
-            filepath = "generalist-controllers-terrain\XNES_Biped\Experiment_Results\Generalists\generalists_dict.pkl"
+            filepath = "XNES_Biped\Experiment_Results\Generalists\generalists_dict_1.pkl"
 
             # Save the dictionary to a file
             with open(filepath, 'wb') as f:
@@ -348,7 +348,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as file:
+    with open('XNES_Biped/biped_exp.json') as file:
         data = json.load(file)
 
     start = time.time()
@@ -375,7 +375,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/{data['filename']}.pt"
+    save_path = f"XNES_Biped/Experiment_Results/{data['filename']}.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher, generalists
@@ -387,4 +387,4 @@ if __name__ == "__main__":
 
 
     for i, generalist in enumerate(generalists):
-        torch.save(generalist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/generalist_ter_0_{i}.pt")
+        torch.save(generalist, f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_0_{i}.pt")
