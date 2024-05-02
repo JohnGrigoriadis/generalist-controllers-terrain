@@ -42,7 +42,7 @@ class EVO():
     def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params, max_fitness = 250):
         self.env = env
         self.net = net
-        self.terrain_params = terrain_params
+        self.terrain_params = terrain_params[:1]
         self.max_fitness = max_fitness
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -117,6 +117,10 @@ class EVO():
 
                 
                 print(f"Generation: {gen}, Best Fitness: {fitness:.3f}")
+
+                if fitness >= self.max_fitness:
+                    print("Target fitness reached.\n   Next terrain...\n")
+                    break
                 
                 if self.evals > self.max_evals:
                     break
@@ -133,7 +137,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as f:
+    with open('XNES_Biped/biped_exp.json') as f:
         data = json.load(f)
 
     start = time.time()
@@ -152,7 +156,7 @@ def experiment():
     sigma = data["stdev_init"]
     # At the moment the population is set to 30, but can be chosen automatically by XNES (23)
     pSize = data["population"]
-    generations = 50 #data["generations"]
+    generations = 1 #data["generations"] // len(terrain_params) 
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, terrain_params, target_fitness)
@@ -161,8 +165,8 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/{data['filename']}.pt"
-    torch.save(searcher.status["best"].values, save_path)
+    # save_path = f"XNES_Biped/{data['filename']}.pt"
+    # torch.save(searcher.status["best"].values, save_path)
 
     return searcher, specialists
 
@@ -172,4 +176,4 @@ if __name__ == "__main__":
     print(searcher.status["best"].values, searcher.status["best"].evals)
 
     for i, specialist in enumerate(specialists):
-        torch.save(specialist, f"generalist-controllers-terrain/XNES_Biped/Experiment_Result/specialist_{i}.pt")
+        torch.save(specialist, f"XNES_Biped/Experiment_Results/specialist_{i}.pt")
