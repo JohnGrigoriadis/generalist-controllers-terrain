@@ -51,7 +51,7 @@ class EVO():
     def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params: list, max_fitness = 250):
         self.env = env
         self.net = net
-        self.terrain_params = self.select_terrains(terrain_params)
+        self.terrain_params = terrain_params
         self.max_fitness = max_fitness
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -68,7 +68,7 @@ class EVO():
         self.good_terrains = []
         self.bad_terrains = []
 
-        self.max_evals = 30 #115_000
+        self.max_evals = 115_000
         self.eval = 0
 
     def evaluation_function(self, net: NeuralNetwork):
@@ -136,8 +136,8 @@ class EVO():
 
             if fitness >= self.max_fitness and self.ter_num == 0:
 
-                save_path = "generalist-controllers-terrain/XNES_Biped/XNES_BipedWalker_250.pt"
-                torch.save(searcher.status["best"].values, save_path)
+                # save_path = "XNES_Biped/XNES_BipedWalker_250.pt"
+                # torch.save(searcher.status["best"].values, save_path)
 
                 good, bad, reached_goal, avg_fitness = self.split(searcher.status["best"].values)
 
@@ -170,9 +170,9 @@ class EVO():
 
 
                 if reached_goal:
-                    save_path = f"XNES_BipedWalker_Split_{count}.pt"
-                    count += 1
-                    torch.save(searcher.status["best"].values, save_path)
+                    # save_path = f"XNES_BipedWalker_Split_{count}.pt"
+                    # count += 1
+                    # torch.save(searcher.status["best"].values, save_path)
                     print(f"Generation: {gen}, Final Best Fitness: {fitness:.3f}, Avg Fitness: {avg_fitness:.3f}")
                     break
             
@@ -284,7 +284,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/Extra_work/biped_exp.json') as f:
+    with open('XNES_Biped/biped_exp.json') as f:
         data = json.load(f)
 
     start = time.time()
@@ -311,7 +311,7 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"{data['filename']}.pt"
+    save_path = f"XNES_Biped\Experiment_Results\Generalists\generalist_good_bad_0.pt.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
