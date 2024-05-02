@@ -43,7 +43,7 @@ class EVO():
     def __init__(self, env : BipedalWalker, net : NeuralNetwork, terrain_params, max_fitness = 250):
         self.env = env
         self.net = net
-        self.terrain_params = terrain_params
+        self.terrain_params = terrain_params[:5]
         self.max_fitness = max_fitness
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,7 +116,7 @@ class EVO():
                 break
 
         self.env.close()
-        self.evals += 1
+        
 
         return total_reward
 
@@ -124,7 +124,8 @@ class EVO():
     def evaluation_function(self, net: NeuralNetwork):
 
         scores = Parallel(n_jobs=4)(delayed(self.run_simulation)(net, terrain) for terrain in self.terrain_params)
-        
+        self.evals += len(scores)
+
         return np.mean(scores)
 
     def run(self, generations = 1000, pSize = 25, sigma = 0.1):
@@ -166,7 +167,7 @@ class EVO():
 def experiment():
 
     # Load the json file biped_exp.json
-    with open('generalist-controllers-terrain/XNES_Biped/biped_exp.json') as f:
+    with open('XNES_Biped/biped_exp.json') as f:
         data = json.load(f)
 
 
@@ -184,7 +185,7 @@ def experiment():
     sigma = data["stdev_init"]
     # At the moment the population is chosen automatically by XNES (23), but I can set it manually
     pSize = data["population"]
-    generations = 85 #data["generations"]
+    generations = 250 #data["generations"]
     target_fitness = data["targetFitness"]
 
     evo = EVO(env, net, terrain_params, target_fitness)
@@ -195,7 +196,7 @@ def experiment():
 
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/Generalists/most_generalist.pt"
+    save_path = f"XNES_Biped/Experiment_Results/Generalists/most_generalist.pt"
     torch.save(searcher.status["best"].values, save_path)
 
     return searcher
