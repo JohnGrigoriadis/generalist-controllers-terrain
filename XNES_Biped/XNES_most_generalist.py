@@ -52,7 +52,7 @@ class EVO():
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.shape[0]
 
-        self.max_evals = 30 #115_000
+        self.max_evals = 115_000
         self.evals = 0
 
     def select_terrains(self, terrains) -> list:

@@ -72,7 +72,7 @@ class EVO():
         self.generalists = []
         self.gen_terrains = []
 
-        self.max_evals = 5 #115_000
+        self.max_evals = 115_000
         self.evals = 0
 
     def evaluation_function(self, net: NeuralNetwork):
