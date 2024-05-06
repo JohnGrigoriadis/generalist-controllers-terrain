@@ -1,5 +1,5 @@
 {
-    "targetFitness": 250,
+    "targetFitness": 270,
     "nStep": 1600,
     "NN-struc": [24, 20, 4],
     "stdev_init": 0.1,
