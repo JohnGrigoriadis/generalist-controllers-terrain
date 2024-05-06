@@ -15,7 +15,7 @@ import json
 import keyboard as kb
 import torch
 
-from network import NeuralNetwork, fill_parameters, parameterize_net
+from network import NeuralNetwork, fill_parameters
 
 try:
     import Box2D
@@ -781,7 +781,7 @@ if __name__ == "__main__":
     max_steps = 1600
     net = NeuralNetwork(24, 20, 4)
 
-    load_path = "Results_Biped.pt"
+    load_path = "XNES_Biped\Experiment_Results\Results_Biped.pt"
     weights = torch.load(load_path)
     fill_parameters(net, weights)
     env.noise, env.slope = 0.0, -0.3
