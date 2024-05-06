@@ -297,7 +297,8 @@ class BipedalWalker(gym.Env, EzPickle):
                     noise = self.np_random.uniform(-self.noise * 10, self.noise * 10) / SCALE
 
                 else:
-                    # New version, some noise starts from the beginning
+                    # New version, some noise starts from the beginning.
+                    # Remove the else block to have the have the origianl starting platform.
                     noise = self.np_random.uniform(-1, 1) / SCALE  # 3
                 y += velocity + noise
 
