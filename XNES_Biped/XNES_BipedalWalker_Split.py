@@ -328,8 +328,9 @@ class EVO():
             for ter_idx, fits in enumerate(gen_matrix_T):
 
                 best_fit = max(list(fits))
-                contr = list(fits).index(best_fit)
-                generalists_new[contr].append(self.keep_terrains[ter_idx])
+                if best_fit >= self.max_fitness:
+                    contr = list(fits).index(best_fit)
+                    generalists_new[contr].append(self.keep_terrains[ter_idx])
             
 
             filepath = "XNES_Biped\Experiment_Results\Generalists\generalists_dict_1.pkl"
