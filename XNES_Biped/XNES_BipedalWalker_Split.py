@@ -143,11 +143,6 @@ class EVO():
                 
                 good, bad, reached_goal, avg_fitness = self.split(searcher.status["best"].values)
 
-                # This is a backup in case the code fails later on
-                save_path = f"generalist-controllers-terrain/XNES_Biped/Experiment_Results/XNES_BipedWalker_ens_{count_split}.pt"
-                torch.save(searcher.status["best"].values, save_path)
-                count_split += 1
-
                 self.terrain_params = bad.copy()  # make the terrains only the bad ones + 1 good for generalization
                 self.gen_terrains.append(good) # Save the terrains in an adjacent list for later merging
                 self.generalists.append(searcher.status["best"].values) # Save the generalist controller
@@ -158,7 +153,7 @@ class EVO():
                 new_problem = NEProblem(
                     objective_sense="max",
                     network_eval_func=self.evaluation_function,
-                    network=net, # Hopefully the initial weights are the same as the best individual
+                    network=net, 
                     num_actors= 0, # Number of parallel evaluations.
                     initial_bounds=(-0.00001, 0.00001),
                     device = self.device
@@ -253,6 +248,8 @@ class EVO():
         """
         This fucntions selects 10 terrains from each subgroup to do the evolution 
         This way the samples are representive of the total terrains
+
+        It is not used anymore, but it is kept for reference.
         """
 
         # Assuming terrains is a list of terrain objects
@@ -301,7 +298,7 @@ class EVO():
         
         elif len(generalists) == 1:
             print("Only one generalist, merging not possible, saving it to file.")
-            filepath = "XNES_Biped\Experiment_Results\Generalists\generalists_dict.pkl"
+            filepath = "XNES_Biped\Experiment_Results\Generalists\generalist_single_dict.pkl"
 
             # Save the dictionary to a file
             with open(filepath, 'wb') as f:
@@ -326,7 +323,6 @@ class EVO():
 
             # Select the best generalist controller for each terrain, with no overlap
             generalists_new = {i: [] for i in range(len(generalists))}
-            # ter_indeces = [i for i in range(len(gen_terrains[0]))]
 
             gen_matrix_T = np.array(gen_matrix).T
             for ter_idx, fits in enumerate(gen_matrix_T):
@@ -358,7 +354,7 @@ def experiment():
     state_size, hidden_size, action_size = data["NN-struc"]
     net = NeuralNetwork(state_size, hidden_size, action_size)
 
-    noise_range = data["noise"] # [0.0, 1.1]  I want to include 1.0
+    noise_range = data["noise"] # [0.0, 0.7]  
     slope_range = data["slope"] # [-0.5, 0.5] Slope 0.5 is already pretty steep
     step_size = data["step_size"] # 0.1
 
@@ -375,8 +371,8 @@ def experiment():
     end = time.time()
     print(f"Time taken: {(end - start) / 60} minutes") # Convert time to minutes and print it.
 
-    save_path = f"XNES_Biped/Experiment_Results/{data['filename']}.pt"
-    torch.save(searcher.status["best"].values, save_path)
+    # save_path = f"XNES_Biped/Experiment_Results/{data['filename']}.pt"
+    # torch.save(searcher.status["best"].values, save_path)
 
     return searcher, generalists
 
