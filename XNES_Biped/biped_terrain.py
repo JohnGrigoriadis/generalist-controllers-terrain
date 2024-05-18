@@ -15,7 +15,7 @@ import json
 import keyboard as kb
 import torch
 
-from network import NeuralNetwork, fill_parameters
+from network_old import NeuralNetwork, fill_parameters
 
 try:
     import Box2D
@@ -599,7 +599,7 @@ class BipedalWalker(gym.Env, EzPickle):
             # normalized to about -50.0 using heuristic, more optimal agent should spend less
         terminated = False
         if self.game_over or pos[0] < 0:
-            reward = -100
+            reward = -100 # Maybe change the penalty to something less harsh.
             terminated = True
         if pos[0] > (TERRAIN_LENGTH - TERRAIN_GRASS) * TERRAIN_STEP:
             terminated = True
@@ -634,18 +634,6 @@ class BipedalWalker(gym.Env, EzPickle):
             (VIEWPORT_W, VIEWPORT_H)
         )
 
-        pygame.transform.scale(self.surf, (SCALE, SCALE))
-
-        # pygame.draw.polygon(
-        #     self.surf,
-        #     color=(215, 215, 255),
-        #     points=[
-        #         (self.scroll * SCALE, 0),
-        #         (self.scroll * SCALE + VIEWPORT_W, 0),
-        #         (self.scroll * SCALE + VIEWPORT_W, VIEWPORT_H),
-        #         (self.scroll * SCALE, VIEWPORT_H),
-        #     ],
-        # )
         self.surf.fill((215, 215, 255))  # fill the background blue
         # Clouds:
         for poly, x1, x2 in self.cloud_poly:
@@ -756,10 +744,15 @@ class BipedalWalker(gym.Env, EzPickle):
 
         self.surf = pygame.transform.flip(self.surf, False, True)
 
+        # Display noise and slope values
+        font = pygame.font.Font(None, 25)
+        text = font.render(f"Noise: {self.noise}, Slope: {self.slope}", True, (0, 0, 0))
+        # text = pygame.transform.flip(text, False, True)
+        self.surf.blit(text, (10, 10))
+
         if self.render_mode == "human":
             assert self.screen is not None
-            pos = self.hull.position
-            self.screen.blit(self.surf, (0, 0))  # (-self.scroll * SCALE,  self.scroll_y * SCALE - VIEWPORT_H/2))
+            self.screen.blit(self.surf, (0, 0))
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
@@ -775,6 +768,7 @@ class BipedalWalker(gym.Env, EzPickle):
             pygame.display.quit()
             pygame.quit()
             self.isopen = False
+            
 if __name__ == "__main__":
 
     env = BipedalWalker(render_mode="human")
@@ -784,7 +778,7 @@ if __name__ == "__main__":
     load_path = "XNES_Biped\Experiment_Results\Results_Biped.pt"
     weights = torch.load(load_path)
     fill_parameters(net, weights)
-    env.noise, env.slope = 0.0, -0.3
+    env.noise, env.slope = 0.0, 0.3
     obs, _ = env.reset()
     done = False
     score = 0
@@ -793,6 +787,7 @@ if __name__ == "__main__":
         action = net.forward(obs).detach().numpy()
 
         obs, reward, terminated, truncated, _ = env.step(action)
+        # print(reward)
 
         score += reward
 
