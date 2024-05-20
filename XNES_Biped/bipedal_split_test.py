@@ -77,6 +77,9 @@ def terrains_under_mean(terrains:list):
     - terrains: list of generated terrain parameters   
     """
 
+
+    if len(terrains) <= 10:
+        return terrains, []
     # Calculate average y coordinates
     
     terrains.sort(key=lambda x: x[1])
@@ -91,6 +94,8 @@ def terrains_under_mean(terrains:list):
         else:
             terrains_above_mean.append(terrain)
 
+    if len(terrains_below_mean) < 6:
+        terrains_below_mean =  terrains.copy()
 
     return terrains_below_mean, terrains_above_mean
 
@@ -117,7 +122,7 @@ class EVO():
 
         # self.terrain_params
         self.terrain_params, self.bad_terrains,  = sort_terrains(terrain_params) 
-        self.keep_terrains = self.terrain_params.copy()
+        self.keep_terrains = np.concatenate([self.terrain_params, self.bad_terrains])
 
         self.max_fitness = max_fitness
 
@@ -143,6 +148,9 @@ class EVO():
 
         Params:
         - net: NeuralNetwork controller
+
+        Returns:
+        - total_reward: Total reward of the network on the current terrain
         """
 
         self.env.noise, self.env.slope = self.terrain_params[self.ter_num] # Change the terrain in each generation
@@ -247,7 +255,7 @@ class EVO():
                 fill_parameters(net, searcher.status["best"].values)
 
                 torch.save(searcher.status["best"].values, 
-                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_0_{count}.pt")
+                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_1_{count}.pt")
                 count += 1
                 
                 new_problem = NEProblem(
@@ -443,6 +451,9 @@ class EVO():
 
 
 def experiment():
+    """
+    Runs the experiment with the given parameters and returns the best controller and generalist controllers.
+    """
 
     # Load the json file biped_exp.json
     with open('XNES_Biped/biped_exp.json') as file:
