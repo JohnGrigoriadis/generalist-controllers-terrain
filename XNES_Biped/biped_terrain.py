@@ -6,7 +6,7 @@ import pygame
 
 import numpy as np
 
-import gym
+import gymnasium as gym
 from gym import error, spaces
 from gym.error import DependencyNotInstalled
 from gym.utils import EzPickle
@@ -746,7 +746,7 @@ class BipedalWalker(gym.Env, EzPickle):
 
         # Display noise and slope values
         font = pygame.font.Font(None, 25)
-        text = font.render(f"Noise: {self.noise}, Slope: {self.slope}", True, (0, 0, 0))
+        text = font.render(f"Noise: {self.noise:.1f}, Slope: {self.slope:.1f}", True, (0, 0, 0))
         # text = pygame.transform.flip(text, False, True)
         self.surf.blit(text, (10, 10))
 
@@ -771,14 +771,15 @@ class BipedalWalker(gym.Env, EzPickle):
             
 if __name__ == "__main__":
 
-    env = BipedalWalker(render_mode="human")
+    env = BipedalWalker()#render_mode="human")
     max_steps = 1600
-    net = NeuralNetwork(24, 20, 4)
+    net = NeuralNetwork(24, 20, 4).eval()
 
-    load_path = "XNES_Biped\Experiment_Results\Results_Biped.pt"
+    # load_path = "XNES_Biped\Experiment_Results\Results_Biped.pt"
+    load_path = "XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_0_0.pt"
     weights = torch.load(load_path)
     fill_parameters(net, weights)
-    env.noise, env.slope = 0.0, 0.3
+    env.noise, env.slope = 0.1, -0.4
     obs, _ = env.reset()
     done = False
     score = 0
@@ -791,7 +792,7 @@ if __name__ == "__main__":
 
         score += reward
 
-        env.render()
+        # env.render()
 
         # If the space bar is pressed, we skip to the next terrain simulation.
         if kb.is_pressed('space'):
@@ -801,4 +802,4 @@ if __name__ == "__main__":
             break
         done = terminated or truncated
 
-    print(f"Score: {round(score, 3)}, Noise: {env.noise}, Slope: {env.slope}")
+    print(f"Score: {score:.3f}, Noise: {env.noise}, Slope: {env.slope}")
