@@ -1,6 +1,6 @@
 
 from biped_terrain import BipedalWalker
-from network_old import NeuralNetwork, fill_parameters
+from network import NeuralNetwork, fill_parameters
 
 import numpy as np
 import time
