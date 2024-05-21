@@ -1,12 +1,14 @@
 
 from biped_terrain import BipedalWalker
-from network import NeuralNetwork, fill_parameters
+from network_old import NeuralNetwork, fill_parameters
 
 import numpy as np
 import time
 import json
 import torch
 import pickle
+
+from sklearn.cluster import KMeans
 
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
@@ -66,38 +68,31 @@ def sort_terrains(terrains, A=[0.0, 0.0]):
             
     return terrains_below_mean, terrains_above_mean
 
-def terrains_under_mean(terrains:list):
+def cluster_terrains(terrains:list):
     """
-    Given a set of terrains, return the terrains that are below the mean in the slope axis
-    among the slope and noise space.
+    Given a set of terrains, cluster them into two groups and return the two clusters.
 
-    The split happens only according to the slope axis.
+    Since xNES works better wit similar terrians, so clustering should help in that.
 
     Params:
     - terrains: list of generated terrain parameters   
     """
 
+    terrains = np.array(terrains)
 
     if len(terrains) <= 10:
         return terrains, []
-    # Calculate average y coordinates
     
-    terrains.sort(key=lambda x: x[1])
-    avg_y = sum(p[1] for p in terrains) / len(terrains)
+    # Apply k-means clustering
+    kmeans = KMeans(n_clusters=2, n_init="auto")
+    kmeans.fit(terrains)
+    labels = kmeans.labels_
 
-    terrains_below_mean = []
-    terrains_above_mean = []
 
-    for terrain in terrains:
-        if terrain[1] <= avg_y:
-            terrains_below_mean.append(terrain)
-        else:
-            terrains_above_mean.append(terrain)
+    cluster_1 = terrains[labels == 0]
+    cluster_2 = terrains[labels == 1]
 
-    if len(terrains_below_mean) < 6:
-        terrains_below_mean =  terrains.copy()
-
-    return terrains_below_mean, terrains_above_mean
+    return cluster_1, cluster_2
 
 class EVO():
     '''
@@ -307,8 +302,6 @@ class EVO():
         max_steps = 1600
         s = 0
 
-        reached_goal = False
-
         good, bad, avg_score = [], [], []
 
         if len(self.bad_terrains) > 0:
@@ -346,7 +339,7 @@ class EVO():
 
         self.env.close()
 
-        bad, self.bad_terrains = terrains_under_mean(bad)
+        bad, self.bad_terrains = cluster_terrains(bad)
 
         print(f"  Evaluation: Good terrains: {len(good)}, Bad terrains : {len(bad) + len(self.bad_terrains)}, Avg score: {np.mean(avg_score):.3f}")
 
