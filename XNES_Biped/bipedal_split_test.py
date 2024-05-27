@@ -1,6 +1,6 @@
 
 from biped_terrain import BipedalWalker
-from network_old import NeuralNetwork, fill_parameters
+from network import NeuralNetwork, fill_parameters
 
 import numpy as np
 import time
@@ -220,7 +220,7 @@ class EVO():
         count = 0
         current_best = -np.inf
 
-        fitness_list = {"Performance of best individual" : []}
+        fitness_dict = {1 : []}
 
         for gen in range(generations):
 
@@ -243,7 +243,7 @@ class EVO():
             score = self.evaluation_function(test_net)
             
             # Add the performance of the best individual to a list for plotting.
-            fitness_list["Performance of best individual"].append(score)
+            fitness_dict[1].append(score)
 
             noise , slope = self.terrain_params[self.ter_num][0], self.terrain_params[self.ter_num][1]
             print(f"Gen: {gen}, Best Fit: {fitness:.3f}, Gen Best: {score:.3f}, Terrain: [{noise:.1f}, {slope:.1f}]")
@@ -254,6 +254,17 @@ class EVO():
 
             if fitness >= self.max_fitness and self.ter_num == 0:
                 
+                torch.save(searcher.status["best"].values, 
+                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_8_{count}.pt")
+                
+                # Temporary save the fitness list to a file for plotting
+                plot_path = f"XNES_Biped/Experiment_Results/Generalists/fitness_list_exp_4_{count}.json"
+
+                with open(plot_path, 'w') as file:
+                    json.dump(fitness_dict, file)
+
+                count += 1               
+
                 good, bad = self.split(searcher.status["best"].values)
 
                 self.terrain_params = bad.copy()  # make the terrains only the bad ones + 1 good for generalization
@@ -263,10 +274,7 @@ class EVO():
                 net = NeuralNetwork(24, 20, 4)
                 fill_parameters(net, searcher.status["best"].values)
 
-                torch.save(searcher.status["best"].values, 
-                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_3_{count}.pt")
-                count += 1
-                
+
                 new_problem = NEProblem(
                     objective_sense="max",
                     network_eval_func=self.evaluation_function,
@@ -300,6 +308,10 @@ class EVO():
         self.merge_generalists(self.generalists)
 
         # Write the values of the fitness_list to a file for plotting
+
+        plot_path = "XNES_Biped/Experiment_Results/Generalists/fitness_list_exp_3.json"
+        with open(plot_path, 'w') as file:
+            json.dump(fitness_dict, file)
         
         return searcher, self.generalists
 
@@ -315,7 +327,7 @@ class EVO():
         if len(self.bad_terrains) == 0:
             self.bad_terrains = self.terrain_params[to_remove]
         else:
-              self.bad_terrains = np.concatenate((self.bad_terrains, self.terrain_params[to_remove]))
+              self.bad_terrains = np.concatenate((self.bad_terrains, [self.terrain_params[to_remove]]))
         self.terrain_params = np.delete(self.terrain_params, to_remove, axis=0)
 
         return self.terrain_params
@@ -337,8 +349,16 @@ class EVO():
 
         good, bad, avg_score = [], [], []
 
-        if len(self.bad_terrains) > 0:
-            self.terrain_params = np.concatenate((self.terrain_params, self.bad_terrains))
+        if np.array(self.bad_terrains).shape == (2,):
+            if np.array(self.terrain_params).shape == (2,):
+                self.terrain_params = np.concatenate(([self.terrain_params], [self.bad_terrains]))
+            else:
+                self.terrain_params = np.concatenate((self.terrain_params, [self.bad_terrains]))
+        else:
+            if np.array(self.terrain_params).shape == (2,):
+                self.terrain_params = np.concatenate(([self.terrain_params], self.bad_terrains))
+            else:
+                self.terrain_params = np.concatenate((self.terrain_params, self.bad_terrains))
 
         for param in self.terrain_params:
 
@@ -374,12 +394,12 @@ class EVO():
 
         bad, self.bad_terrains = cluster_terrains(bad)
 
-        print(f"  Evaluation: Good terrains: {len(good)}, Bad terrains : {len(bad) + len(self.bad_terrains)}, Avg score: {np.mean(avg_score):.3f}")
         if np.mean(avg_score) >= 220:
-            print("Average score of controller is above the target, stopping the evolution.")
-            return bad, []
-        
-        print(f"Continueing evolution on {len(bad)} terrains")
+            print("Average score of controller is above the target of 220, stopping the evolution.")
+            return self.terrain_params, []
+
+        print(f"  Evaluation: Good terrains: {len(good)}, Bad terrains : {len(bad) + len(self.bad_terrains)}, Avg score: {np.mean(avg_score):.3f}")
+        print(f"Continueing evolution on {len(bad)} terrains")        
 
         return good, bad 
     
