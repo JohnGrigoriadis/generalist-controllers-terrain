@@ -15,7 +15,7 @@ import json
 import keyboard as kb
 import torch
 
-from network_old import NeuralNetwork, fill_parameters
+from network import NeuralNetwork, fill_parameters
 
 try:
     import Box2D
