@@ -13,8 +13,6 @@ from sklearn.cluster import KMeans
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
 
-# from joblib import Parallel, delayed
-
 # Generate terrains to test the generalist controller on
 def generate_terrain(noise_range, slope_range, step_size):
     """
@@ -255,10 +253,10 @@ class EVO():
             if fitness >= self.max_fitness and self.ter_num == 0:
                 
                 torch.save(searcher.status["best"].values, 
-                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_8_{count}.pt")
+                            f"XNES_Biped/Experiment_Results/Generalists/generalist_ter_exp_0_{count}.pt")
                 
                 # Temporary save the fitness list to a file for plotting
-                plot_path = f"XNES_Biped/Experiment_Results/Generalists/fitness_list_exp_4_{count}.json"
+                plot_path = f"XNES_Biped/Experiment_Results/Generalists/fitness_list_exp_0_{count}.json"
 
                 with open(plot_path, 'w') as file:
                     json.dump(fitness_dict, file)
