@@ -1,6 +1,6 @@
 
 from biped_terrain import BipedalWalker
-from network import NeuralNetwork, fill_parameters
+from network_old import NeuralNetwork, fill_parameters
 
 import numpy as np
 import time
@@ -12,6 +12,8 @@ from sklearn.cluster import KMeans
 
 from evotorch.algorithms import XNES
 from evotorch.neuroevolution import NEProblem
+
+# from joblib import Parallel, delayed
 
 # Generate terrains to test the generalist controller on
 def generate_terrain(noise_range, slope_range, step_size):
@@ -335,18 +337,19 @@ class EVO():
         Test the best individual on all terrains and split them into Good and Bad terrains.
         Then continue the evolution on the Bad terrains to encourage generalization.
 
-        If the best individual reaches the target fitness on 85% of the terrains, the initial goal is reached,
-        but the evolution continues to hopefully find a better generalist controller. - NOT USED HERE
+        If the best individual reaches an average fitness above 220, the initial goal is reached,
+        the evolution stops since it means that every terrain is solved, or close to it.
         """
 
         # Fill in the parameters of the best individual
-        fill_parameters(self.net.eval(), best)
+        fill_parameters(self.net, best)
 
         max_steps = 1600
         s = 0
 
         good, bad, avg_score = [], [], []
 
+        # Check the shapes of the terrains and bad terrains so we can merge them without errors
         if np.array(self.bad_terrains).shape == (2,):
             if np.array(self.terrain_params).shape == (2,):
                 self.terrain_params = np.concatenate(([self.terrain_params], [self.bad_terrains]))
@@ -381,7 +384,7 @@ class EVO():
 
                 done = terminated or truncated
 
-            if score >= 220: # Be a bit more lenient with accepting good and bad terrains.
+            if score >= 220: 
                 good.append(param)
             else:
                 bad.append(param)
@@ -389,6 +392,9 @@ class EVO():
             avg_score.append(score)
 
         self.env.close()
+
+        if good == []:
+            good, bad = self.split(bad)
 
         bad, self.bad_terrains = cluster_terrains(bad)
 
