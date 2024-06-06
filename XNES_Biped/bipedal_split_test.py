@@ -394,7 +394,7 @@ class EVO():
         self.env.close()
 
         if good == []:
-            good, bad = self.split(bad)
+            good, bad = self.split(best)
 
         bad, self.bad_terrains = cluster_terrains(bad)
 
