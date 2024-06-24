@@ -1,7 +1,7 @@
 # Learning generalist behaviour for traversing different terrains
 This repository contains the implementation for the research paper titled "Learning generalist behaviour for traversing different terrain". The paper addresses the limited understanding of robustness and generalisability in neuro-evolutionary methods, specifically focusing on artificial neural networks (ANNs) used in control tasks, such as those applied in robotics.
 
-![Showcase of the results of the experiments.]([url-to-your-gif.gif](https://github.com/JohnGrigoriadis/generalist-controllers-terrain/blob/main/Terrain%20Showcase.gif))
+![Showcase of the results of the experiments.](https://github.com/JohnGrigoriadis/generalist-controllers-terrain/blob/main/Terrain%20Showcase.gif)
 
 
 
